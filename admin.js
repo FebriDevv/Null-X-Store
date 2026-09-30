@@ -4,7 +4,7 @@ if (!isAdminLoggedIn) window.location.href = 'admin-login.html';
 
 // ==================== CONFIG DATABASE (SAMA KAYAK script.js) ====================
 // Paste URL Web app Google Sheets yang sama di sini biar admin bisa lihat semua user.
-const SHEETS_URL = 'https://script.google.com/macros/s/AKfycbzlkCjA-EvttTsHthD0s-A5Py4e5l0EcW68DnCTomSF3lQU49xKloSEbx1JC9BdyTQHeQ/exec';
+const SHEETS_URL = 'https://script.google.com/macros/s/AKfycbw-ihjzmuiySAPfOKY5s4likSijwGWil-H8xq6RBjH7FKMzE9EjK9-VqfozqELQYL88KQ/exec';
 
 let adminUsersCache = [];
 
