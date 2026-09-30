@@ -16,8 +16,8 @@
 // Database keliatan di console Firebase (Authentication = user login, Firestore = data users+toko).
 // Lupa password = link reset resmi dikirim ke Gmail user (otomatis, tanpa setting SMTP).
 
-const FIREBASE_API_KEY = '';
-const FIREBASE_PROJECT_ID = '';
+const FIREBASE_API_KEY = 'AIzaSyBCnfd-pG00D1fxfD0R8gfqwy2LNp_ZIEY';
+const FIREBASE_PROJECT_ID = 'null-x';
 
 function fbOn() {
     return FIREBASE_API_KEY !== '' && FIREBASE_PROJECT_ID !== '';
