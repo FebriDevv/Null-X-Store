@@ -809,16 +809,14 @@ function renderTransaksiUser() {
     const userTrx = transaksi.filter(t => t.email === currentUser?.email);
     if (userTrx.length === 0) {
         tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#737373; padding:2rem;">Belum ada transaksi.</td></tr>';
+        if (trxTimer) { clearInterval(trxTimer); trxTimer = null; }
         return;
     }
     tbody.innerHTML = userTrx.map(t => {
         let badge;
         if (t.status === 'Sukses') badge = '<span class="badge-status badge-success">Sukses</span>';
         else if (t.status === 'Expired' || t.status === 'Batal') badge = '<span class="badge-status">' + t.status + '</span>';
-        else {
-            const sisa = paySisa(t);
-            badge = '<span class="badge-status badge-warning">Pending ' + (sisa > 0 ? payClock(sisa) : '') + '</span>';
-        }
+        else badge = '<span class="badge-status badge-warning">Pending <span data-sisa="' + t.id + '">' + payClock(paySisa(t)) + '</span></span>';
         const bisaBayar = (t.status === 'Pending' && paySisa(t) > 0);
         return `
         <tr>
@@ -827,9 +825,28 @@ function renderTransaksiUser() {
             <td>${t.tier || t.durasi}</td>
             <td>Rp ${t.total.toLocaleString('id-ID')}</td>
             <td>${t.tanggal}</td>
-            <td>${badge}${bisaBayar ? `<br><button class="card-btn" style="margin-top:6px;padding:4px 10px;font-size:0.7rem;" onclick='showPaymentPopup(${JSON.stringify(t.id)})'>Bayar</button>` : ''}</td>
+            <td><div class="trx-status-cell">${badge}${bisaBayar ? `<button class="trx-bayar-btn" onclick='showPaymentPopup(${JSON.stringify(t.id)})'>Bayar</button>` : ''}</div></td>
         </tr>`;
     }).join('');
+    startTrxTimer();
+}
+
+let trxTimer = null;
+
+function startTrxTimer() {
+    if (trxTimer) clearInterval(trxTimer);
+    trxTimer = setInterval(() => {
+        const tbody = document.getElementById('user-transaksi-body');
+        if (!tbody || !document.getElementById('transaksi-page').classList.contains('active')) return;
+        let adaExpired = false;
+        document.querySelectorAll('[data-sisa]').forEach(el => {
+            const t = transaksi.find(x => x.id === el.dataset.sisa);
+            if (!t) return;
+            if (t.status === 'Pending' && paySisa(t) > 0) el.innerText = payClock(paySisa(t));
+            else if (t.status === 'Pending') adaExpired = true;
+        });
+        if (adaExpired) { cekExpired(); renderTransaksiUser(); }
+    }, 1000);
 }
 
 // ==================== INIT ====================
