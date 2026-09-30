@@ -1,0 +1,6 @@
+# database lokal / rahasia — jangan ikut ke GitHub/Netlify
+users.json
+config.php
+api.php
+database.sql
+apps-script.gs

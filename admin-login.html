@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NULL-X | Admin Access</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="admin-login-body">
+
+    <div class="bg-radial"></div>
+    <div class="bg-noise"></div>
+
+    <div class="auth-page-full">
+        <div class="auth-card admin-auth-card">
+            <div class="auth-logo-wrap admin-logo-wrap">
+                <img src="assets/logo.png" alt="NULL-X" onerror="this.src='https://placehold.co/100x100/ef4444/ffffff?text=ADM'">
+            </div>
+            <h2 class="auth-title">ADMIN <span style="color: #ef4444;">ACCESS</span></h2>
+            <p class="auth-sub">Halaman khusus administrator. User biasa dilarang masuk.</p>
+
+            <form id="admin-login-form" onsubmit="handleAdminLogin(event)">
+                <div class="input-group">
+                    <label>Username Admin</label>
+                    <input type="text" id="admin-username" placeholder="Masukkan username admin" required autocomplete="off">
+                </div>
+                <div class="input-group">
+                    <label>Password Admin</label>
+                    <input type="password" id="admin-password" placeholder="Masukkan password admin" required>
+                </div>
+                <button type="submit" class="btn-glow btn-full admin-btn-glow">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>
+                    <span>Akses Dashboard</span>
+                </button>
+            </form>
+
+            <p class="auth-footer">
+                <a href="index.html">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle; margin-right:4px;"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+                    Kembali ke halaman user
+                </a>
+            </p>
+        </div>
+    </div>
+
+<script>
+    if (sessionStorage.getItem('nx_admin') === 'true') {
+        window.location.href = 'admin.html';
+    }
+
+    function handleAdminLogin(event) {
+        event.preventDefault();
+        const username = document.getElementById('admin-username').value.trim();
+        const password = document.getElementById('admin-password').value.trim();
+        const ADMIN_USER = "NULL-X1";
+        const ADMIN_PW = "NULLX2026";
+
+        function showSimpleAlert(title, message, type) {
+            const overlay = document.createElement('div');
+            overlay.className = 'modal-overlay show';
+            const icon = type === 'success' 
+                ? '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>'
+                : '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>';
+            overlay.innerHTML = `
+                <div class="modal-box">
+                    <div class="modal-icon ${type}">${icon}</div>
+                    <h3 class="modal-title">${title}</h3>
+                    <p class="modal-message">${message}</p>
+                    <div class="modal-actions">
+                        <button class="modal-btn modal-btn-primary" onclick="this.closest('.modal-overlay').remove()">OK</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(overlay);
+        }
+
+        if (username === ADMIN_USER && password === ADMIN_PW) {
+            sessionStorage.setItem('nx_admin', 'true');
+            showSimpleAlert('Akses Diterima', 'Selamat datang, Admin NULL-X.', 'success');
+            setTimeout(() => window.location.href = 'admin.html', 1200);
+        } else {
+            showSimpleAlert('Akses Ditolak', 'Username atau Password Admin salah.', 'error');
+            document.getElementById('admin-password').value = '';
+        }
+    }
+</script>
+</body>
+</html>

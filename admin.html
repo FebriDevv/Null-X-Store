@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NULL-X | Admin Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <div class="bg-radial"></div>
+    <div class="bg-noise"></div>
+
+    <nav class="navbar">
+        <div class="nav-brand">
+            <div class="logo-wrap">
+                <img src="assets/logo.png" alt="NULL-X" onerror="this.src='https://placehold.co/100x100/ef4444/ffffff?text=ADM'">
+            </div>
+            <div class="brand-text">NULL<span>-X</span> <span class="admin-badge">Admin</span></div>
+        </div>
+        <ul class="nav-links">
+            <li><a onclick="showAdminPage('dashboard', event)" class="nav-link active">Dashboard</a></li>
+            <li><a onclick="showAdminPage('produk', event)" class="nav-link">Paket</a></li>
+            <li><a onclick="showAdminPage('faq', event)" class="nav-link">FAQ</a></li>
+            <li><a onclick="showAdminPage('transaksi', event)" class="nav-link">Transaksi</a></li>
+            <li><a onclick="showAdminPage('users', event)" class="nav-link">Users</a></li>
+            <li><a onclick="showAdminPage('diskon', event)" class="nav-link">Diskon</a></li>
+            <li><a onclick="showAdminPage('kontak', event)" class="nav-link">Kontak</a></li>
+        </ul>
+        <div class="nav-actions">
+            <button class="btn-outline" onclick="logoutAdmin()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                Logout
+            </button>
+        </div>
+    </nav>
+
+    <!-- DASHBOARD -->
+    <div id="admin-dashboard-page" class="page active">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-label">OVERVIEW</span>
+                <h2 class="section-title">Dashboard <span class="text-gradient">Admin</span></h2>
+                <p class="section-sub">Selamat datang kembali, Admin NULL-X.</p>
+            </div>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+                    </div>
+                    <h3>Total Paket</h3>
+                    <p id="stat-produk">0</p>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+                    </div>
+                    <h3>Total Transaksi</h3>
+                    <p id="stat-transaksi">0</p>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                    </div>
+                    <h3>Total Pendapatan</h3>
+                    <p id="stat-pendapatan">Rp 0</p>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                    </div>
+                    <h3>Total User</h3>
+                    <p id="stat-user">0</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- KELOLA PAKET -->
+    <div id="admin-produk-page" class="page">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-label">MANAJEMEN</span>
+                <h2 class="section-title">Kelola <span class="text-gradient">Paket</span></h2>
+                <p class="section-sub">Tambah atau hapus paket beserta tier harga.</p>
+            </div>
+            <div class="admin-form">
+                <input type="text" id="prod-nama" placeholder="Nama Paket (contoh: EXTERNAL)">
+                <input type="text" id="prod-desc" placeholder="Deskripsi Singkat">
+                <input type="text" id="prod-tiers" placeholder="Tier: 1 Day:5000, 7 Days:35000, 30 Days:120000">
+                <button class="btn-glow" onclick="tambahPaket()">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                    Tambah
+                </button>
+            </div>
+            <div class="glass-table">
+                <table>
+                    <thead><tr><th>Nama</th><th>Deskripsi</th><th>Tier Harga</th><th>Aksi</th></tr></thead>
+                    <tbody id="admin-produk-body"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- KELOLA FAQ -->
+    <div id="admin-faq-page" class="page">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-label">MANAJEMEN</span>
+                <h2 class="section-title">Kelola <span class="text-gradient">FAQ</span></h2>
+                <p class="section-sub">Atur pertanyaan yang sering diajukan.</p>
+            </div>
+            <div class="admin-form">
+                <input type="text" id="faq-pertanyaan" placeholder="Pertanyaan">
+                <input type="text" id="faq-jawaban" placeholder="Jawaban">
+                <button class="btn-glow" onclick="tambahFAQ()">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                    Tambah
+                </button>
+            </div>
+            <div class="glass-table">
+                <table>
+                    <thead><tr><th>Pertanyaan</th><th>Jawaban</th><th>Aksi</th></tr></thead>
+                    <tbody id="admin-faq-body"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- TRANSAKSI -->
+    <div id="admin-transaksi-page" class="page">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-label">LAPORAN</span>
+                <h2 class="section-title">Riwayat <span class="text-gradient">Transaksi</span></h2>
+                <p class="section-sub">Kelola semua transaksi user.</p>
+            </div>
+            <button class="btn-glow" onclick="exportToExcel()" style="margin-bottom: 1.25rem;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Cetak ke Excel (CSV)
+            </button>
+            <div class="glass-table">
+                <table>
+                    <thead><tr><th>ID</th><th>User</th><th>Paket</th><th>Durasi</th><th>Total</th><th>Tanggal</th><th>Status</th><th>Aksi</th></tr></thead>
+                    <tbody id="admin-transaksi-body"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- KELOLA USER -->
+    <div id="admin-users-page" class="page">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-label">DATABASE</span>
+                <h2 class="section-title">Data <span class="text-gradient">Users</span></h2>
+                <p class="section-sub">Semua user yang pernah daftar / login. Sumber: Google Sheets (kalau SHEETS_URL diisi) + browser lokal.</p>
+            </div>
+            <div style="display:flex; gap:0.6rem; flex-wrap:wrap; margin-bottom:1.25rem;">
+                <button class="btn-glow" onclick="loadUsersAdmin()">
+                    <span>Refresh Data</span>
+                </button>
+                <button class="btn-outline" onclick="exportUsersNotepad()">
+                    Download Notepad (.txt)
+                </button>
+                <button class="btn-outline" onclick="exportUsersCSV()">
+                    Download Excel (.csv)
+                </button>
+            </div>
+            <div class="glass-table">
+                <table>
+                    <thead><tr><th>Email</th><th>Username</th><th>Tanggal</th><th>Sumber</th></tr></thead>
+                    <tbody id="admin-users-body"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- KELOLA DISKON -->
+    <div id="admin-diskon-page" class="page">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-label">MANAJEMEN</span>
+                <h2 class="section-title">Kode <span class="text-gradient">Diskon</span></h2>
+                <p class="section-sub">Buat kode promo untuk user.</p>
+            </div>
+            <div class="admin-form">
+                <input type="text" id="diskon-kode" placeholder="Kode (contoh: HEMAT50)">
+                <input type="number" id="diskon-persen" placeholder="Diskon (%)" min="1" max="100">
+                <button class="btn-glow" onclick="tambahDiskon()">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                    Tambah
+                </button>
+            </div>
+            <div class="glass-table">
+                <table>
+                    <thead><tr><th>Kode</th><th>Diskon</th><th>Aksi</th></tr></thead>
+                    <tbody id="admin-diskon-body"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- KONTAK PEMBAYARAN -->
+    <div id="admin-kontak-page" class="page">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-label">PENGATURAN</span>
+                <h2 class="section-title">Kontak <span class="text-gradient">Pembayaran</span></h2>
+                <p class="section-sub">Atur tujuan pembayaran WhatsApp & Discord.</p>
+            </div>
+            <div class="admin-form" style="flex-direction: column; align-items: stretch; gap: 1rem;">
+                <div class="input-group">
+                    <label>Nomor WhatsApp (format: 628xxx)</label>
+                    <input type="text" id="kontak-wa" placeholder="6281234567890">
+                </div>
+                <div class="input-group">
+                    <label>Link Discord</label>
+                    <input type="text" id="kontak-discord" placeholder="https://discord.gg/xxxxx">
+                </div>
+                <button class="btn-glow" onclick="simpanKontak()">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                    Simpan Kontak
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="admin.js"></script>
+</body>
+</html>
