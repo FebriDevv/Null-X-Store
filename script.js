@@ -79,6 +79,13 @@ let kontak = JSON.parse(localStorage.getItem('nx_kontak')) || {
     discord: "https://discord.gg/hXUYgFwRK"
 };
 
+let pembayaran = JSON.parse(localStorage.getItem('nx_pembayaran')) || {
+    dana: "083869704161",
+    gopay: "",
+    qris: "",
+    menit: 15
+};
+
 function saveData() {
     localStorage.setItem('nx_users', JSON.stringify(users));
     localStorage.setItem('nx_paket', JSON.stringify(paket));
@@ -86,6 +93,7 @@ function saveData() {
     localStorage.setItem('nx_transaksi', JSON.stringify(transaksi));
     localStorage.setItem('nx_diskon', JSON.stringify(diskon));
     localStorage.setItem('nx_kontak', JSON.stringify(kontak));
+    localStorage.setItem('nx_pembayaran', JSON.stringify(pembayaran));
     // user hanya dorong transaksi ke database online (paket/faq/diskon/kontak milik admin,
     // kalau ikut didorong dari sini bisa nimpa settingan admin yang lebih baru)
     pushKey('transaksi', transaksi);
@@ -109,11 +117,13 @@ function applyShared(d) {
     if (Array.isArray(d.transaksi)) transaksi = d.transaksi;
     if (Array.isArray(d.diskon) && d.diskon.length) diskon = d.diskon;
     if (d.kontak && d.kontak.wa) kontak = d.kontak;
+    if (d.pembayaran && (d.pembayaran.dana || d.pembayaran.gopay || d.pembayaran.qris)) pembayaran = d.pembayaran;
     localStorage.setItem('nx_paket', JSON.stringify(paket));
     localStorage.setItem('nx_faq', JSON.stringify(faq));
     localStorage.setItem('nx_transaksi', JSON.stringify(transaksi));
     localStorage.setItem('nx_diskon', JSON.stringify(diskon));
     localStorage.setItem('nx_kontak', JSON.stringify(kontak));
+    localStorage.setItem('nx_pembayaran', JSON.stringify(pembayaran));
 }
 
 async function loadShared() {
@@ -620,6 +630,7 @@ function proceedPayment() {
     const subtotal = tier.harga;
     const potongan = subtotal * (orderState.diskonPersen / 100);
     const total = subtotal - potongan;
+    const menit = (pembayaran.menit > 0 ? pembayaran.menit : 15);
 
     const trx = {
         id: 'TRX-' + Date.now(),
@@ -639,7 +650,9 @@ function proceedPayment() {
         orderUser: username,
         orderPass: password,
         tanggal: new Date().toLocaleString('id-ID'),
-        status: 'Pending'
+        status: 'Pending',
+        method: 'QRIS',
+        expiresAt: Date.now() + menit * 60 * 1000
     };
     transaksi.push(trx);
     saveData();
@@ -647,59 +660,137 @@ function proceedPayment() {
     setTimeout(() => showPaymentPopup(trx), 300);
 }
 
-function showPaymentPopup(trx) {
-    const waMessage = encodeURIComponent(
-        `Halo Admin NULL-X, saya ingin order:\n\n` +
-        `ID: ${trx.id}\n` +
-        `Paket: ${trx.paket} (${trx.tier})\n` +
-        (trx.tierDesc ? `Deskripsi: ${trx.tierDesc}\n` : '') +
-        `Durasi: ${trx.tier}\n` +
-        `Subtotal: Rp ${trx.subtotal.toLocaleString('id-ID')}\n` +
-        (trx.diskon > 0 ? `Diskon: ${trx.diskon}% (${trx.diskonKode})\n` : '') +
-        `Total: Rp ${trx.total.toLocaleString('id-ID')}\n\n` +
-        `Username: ${trx.orderUser}\n` +
-        `Password: ${trx.orderPass}\n\n` +
-        `Mohon diproses ya. Terima kasih.`
-    );
+// ==================== CHECKOUT DANA / GOPAY / QRIS + TIMER ====================
+let payMethod = 'QRIS';
+let payTimer = null;
 
-    const waLink = `https://wa.me/${kontak.wa}?text=${waMessage}`;
-    const discordLink = kontak.discord;
+function payMenit() { return (pembayaran.menit > 0 ? pembayaran.menit : 15); }
+
+function paySisa(trx) {
+    if (!trx.expiresAt) return 0;
+    return Math.max(0, trx.expiresAt - Date.now());
+}
+
+function payClock(ms) {
+    const s = Math.ceil(ms / 1000);
+    const m = String(Math.floor(s / 60)).padStart(2, '0');
+    const d = String(s % 60).padStart(2, '0');
+    return m + ':' + d;
+}
+
+function cekExpired() {
+    let berubah = false;
+    transaksi.forEach(t => {
+        if (t.status === 'Pending' && t.expiresAt && Date.now() > t.expiresAt) { t.status = 'Expired'; berubah = true; }
+    });
+    if (berubah) saveData();
+}
+
+function copyPay(teks) {
+    const done = () => showAlert('Disalin', teks + ' berhasil disalin.', 'success');
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(teks).then(done).catch(() => fallbackCopy(teks, done));
+    else fallbackCopy(teks, done);
+}
+
+function fallbackCopy(teks, done) {
+    const ta = document.createElement('textarea');
+    ta.value = teks;
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); done(); } catch (e) { showAlert('Gagal', 'Salin manual: ' + teks, 'warning'); }
+    ta.remove();
+}
+
+function setPayMethod(m, trxId) {
+    payMethod = m;
+    const t = transaksi.find(x => x.id === trxId);
+    if (t && t.status === 'Pending') { t.method = m; saveData(); }
+    document.querySelectorAll('.pay-tab').forEach(b => b.classList.toggle('active', b.dataset.method === m));
+    ['QRIS', 'DANA', 'GOPAY'].forEach(k => {
+        const el = document.getElementById('pay-panel-' + k);
+        if (el) el.style.display = (k === m ? 'block' : 'none');
+    });
+}
+
+function showPaymentPopup(trxOrId) {
+    cekExpired();
+    const live = transaksi.find(x => x.id === (typeof trxOrId === 'string' ? trxOrId : trxOrId.id)) || trxOrId;
+    if (!live || typeof live !== 'object') return;
+    if (live.status === 'Expired') { showAlert('Kadaluarsa', 'Waktu bayar habis. Silakan order ulang.', 'error'); showPage('transaksi'); return; }
+
+    payMethod = live.method || 'QRIS';
+    if (payTimer) clearInterval(payTimer);
+
+    const danaNo = pembayaran.dana || '-';
+    const gopayNo = pembayaran.gopay || '-';
+    const qrText = 'NULLX|' + live.id + '|Rp' + live.total + '|DANA ' + danaNo;
+    const qrAuto = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' + encodeURIComponent(qrText);
+    const qrImg = pembayaran.qris || qrAuto;
+
+    const waMessage = encodeURIComponent(
+        'Halo Admin NULL-X, saya sudah bayar:\n\nID: ' + live.id + '\nPaket: ' + live.paket + ' (' + live.tier + ')\n' +
+        'Total: Rp ' + live.total.toLocaleString('id-ID') + '\nMetode: ' + payMethod + '\n\nMohon diproses ya.'
+    );
+    const waLink = 'https://wa.me/' + kontak.wa + '?text=' + waMessage;
 
     showModal({
-        title: 'Pilih Metode Pembayaran',
-        type: 'success',
+        title: 'Checkout Pembayaran',
+        type: 'info',
         customHTML: `
+            <div class="pay-timer-box">Selesaikan dalam <span id="pay-timer">--:--</span></div>
             <div class="payment-summary">
-                <div class="payment-row"><span>ID Transaksi</span><span>${trx.id}</span></div>
-                <div class="payment-row"><span>Paket</span><span>${trx.paket} - ${trx.tier}</span></div>
-                ${trx.tierDesc ? `<div class="payment-row"><span>Deskripsi</span><span>${trx.tierDesc}</span></div>` : ''}
-                <div class="payment-row"><span>Durasi</span><span>${trx.tier}</span></div>
-                <div class="payment-row"><span>Username</span><span>${trx.orderUser}</span></div>
-                <div class="payment-row"><span>Password</span><span>${trx.orderPass}</span></div>
-                <div class="payment-row"><span>Subtotal</span><span>Rp ${trx.subtotal.toLocaleString('id-ID')}</span></div>
-                ${trx.diskon > 0 ? `<div class="payment-row"><span>Diskon</span><span>-${trx.diskon}% (${trx.diskonKode})</span></div>` : ''}
-                <div class="payment-row payment-total"><span>Total</span><span>Rp ${trx.total.toLocaleString('id-ID')}</span></div>
+                <div class="payment-row"><span>ID</span><span>${live.id}</span></div>
+                <div class="payment-row"><span>Paket</span><span>${live.paket} - ${live.tier}</span></div>
+                <div class="payment-row payment-total"><span>Total</span><span>Rp ${live.total.toLocaleString('id-ID')}</span></div>
             </div>
-            <p class="payment-note">Hubungi admin untuk menyelesaikan pembayaran:</p>
-            <div class="payment-buttons">
-                <a href="${waLink}" target="_blank" class="payment-btn payment-wa">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893A11.821 11.821 0 0020.885 3.4"/></svg>
-                    Bayar via WhatsApp
-                </a>
-                <a href="${discordLink}" target="_blank" class="payment-btn payment-discord">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M20.317 4.492c-1.53-.69-3.17-1.2-4.885-1.49a.075.075 0 0 0-.079.036c-.21.369-.444.85-.608 1.23a18.566 18.566 0 0 0-5.487 0 12.36 12.36 0 0 0-.617-1.23A.077.077 0 0 0 8.562 3c-1.714.29-3.354.8-4.885 1.491a.07.07 0 0 0-.032.027C.533 9.093-.32 13.555.099 17.961a.08.08 0 0 0 .031.055 20.03 20.03 0 0 0 5.993 2.98.078.078 0 0 0 .084-.026 13.83 13.83 0 0 0 1.226-1.963.074.074 0 0 0-.041-.104 13.201 13.201 0 0 1-1.872-.878.075.075 0 0 1-.008-.125c.126-.093.252-.19.372-.287a.075.075 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.196.373.288a.075.075 0 0 1-.006.125c-.598.344-1.22.635-1.873.877a.075.075 0 0 0-.04.105c.36.687.772 1.341 1.225 1.962a.077.077 0 0 0 .084.028 19.963 19.963 0 0 0 6.002-2.981.077.077 0 0 0 .032-.054c.5-5.094-.838-9.52-3.549-13.442a.06.06 0 0 0-.031-.03zM8.02 15.331c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.418 2.157-2.418 1.21 0 2.176 1.095 2.157 2.418 0 1.334-.956 2.419-2.157 2.419zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.418 2.157-2.418 1.21 0 2.176 1.095 2.157 2.418 0 1.334-.946 2.419-2.157 2.419z"/></svg>
-                    Bayar via Discord
-                </a>
+            <div class="pay-tabs">
+                <button class="pay-tab ${payMethod === 'QRIS' ? 'active' : ''}" data-method="QRIS" onclick="setPayMethod('QRIS','${live.id}')">QRIS</button>
+                <button class="pay-tab ${payMethod === 'DANA' ? 'active' : ''}" data-method="DANA" onclick="setPayMethod('DANA','${live.id}')">DANA</button>
+                <button class="pay-tab ${payMethod === 'GOPAY' ? 'active' : ''}" data-method="GOPAY" onclick="setPayMethod('GOPAY','${live.id}')">GOPAY</button>
             </div>
+            <div id="pay-panel-QRIS" style="display:${payMethod === 'QRIS' ? 'block' : 'none'}">
+                <img src="${qrImg}" alt="QRIS" style="width:200px;height:200px;border-radius:12px;background:#fff;padding:8px;display:block;margin:0 auto;" onerror="this.src='${qrAuto}'">
+                <p class="payment-note">Scan QR di atas pake Dana / GoPay / m-banking. Nominal pas: Rp ${live.total.toLocaleString('id-ID')}</p>
+            </div>
+            <div id="pay-panel-DANA" style="display:${payMethod === 'DANA' ? 'block' : 'none'}">
+                <div class="pay-number-box"><span>${danaNo}</span><button class="pay-copy-btn" onclick="copyPay('${danaNo}')">Salin</button></div>
+                <p class="payment-note">Transfer DANA ke nomor di atas, nominal pas Rp ${live.total.toLocaleString('id-ID')}</p>
+            </div>
+            <div id="pay-panel-GOPAY" style="display:${payMethod === 'GOPAY' ? 'block' : 'none'}">
+                <div class="pay-number-box"><span>${gopayNo}</span><button class="pay-copy-btn" onclick="copyPay('${gopayNo}')">Salin</button></div>
+                <p class="payment-note">Transfer GoPay ke nomor di atas, nominal pas Rp ${live.total.toLocaleString('id-ID')}</p>
+            </div>
+            <p class="payment-note">Abis bayar klik <b>Saya Sudah Bayar</b>, admin verifikasi manual lalu status jadi Sukses. Butuh bantuan? <a href="${waLink}" target="_blank">Chat admin</a></p>
         `,
-        confirmText: 'Sudah Bayar',
+        confirmText: 'Saya Sudah Bayar',
         showCancel: true,
         cancelText: 'Nanti',
         onConfirm: () => {
-            showAlert('Terima Kasih', 'Admin akan segera memproses pesanan kamu.', 'success');
+            if (payTimer) clearInterval(payTimer);
+            const t = transaksi.find(x => x.id === live.id);
+            if (t && t.status === 'Expired') { showAlert('Kadaluarsa', 'Waktu bayar habis. Order ulang ya.', 'error'); }
+            else showAlert('Terima Kasih', 'Pembayaran via ' + payMethod + ' dicatat. Admin verifikasi lalu status jadi Sukses.', 'success');
             showPage('transaksi');
         }
     });
+
+    const tick = () => {
+        const el = document.getElementById('pay-timer');
+        if (!el) { clearInterval(payTimer); return; }
+        const t = transaksi.find(x => x.id === live.id);
+        const sisa = t ? paySisa(t) : 0;
+        el.innerText = payClock(sisa);
+        if (sisa <= 0) {
+            clearInterval(payTimer);
+            if (t && t.status === 'Pending') { t.status = 'Expired'; saveData(); }
+            const ov = document.querySelector('.modal-overlay');
+            if (ov) ov.remove();
+            showAlert('Waktu Habis', 'Batas bayar ' + payMenit() + ' menit lewat. Silakan order ulang.', 'error');
+            showPage('transaksi');
+        }
+    };
+    tick();
+    payTimer = setInterval(tick, 1000);
 }
 
 // ==================== FAQ ====================
@@ -712,6 +803,7 @@ function renderFAQ() {
 
 // ==================== TRANSAKSI ====================
 function renderTransaksiUser() {
+    cekExpired();
     const tbody = document.getElementById('user-transaksi-body');
     if (!tbody) return;
     const userTrx = transaksi.filter(t => t.email === currentUser?.email);
@@ -719,16 +811,25 @@ function renderTransaksiUser() {
         tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#737373; padding:2rem;">Belum ada transaksi.</td></tr>';
         return;
     }
-    tbody.innerHTML = userTrx.map(t => `
+    tbody.innerHTML = userTrx.map(t => {
+        let badge;
+        if (t.status === 'Sukses') badge = '<span class="badge-status badge-success">Sukses</span>';
+        else if (t.status === 'Expired' || t.status === 'Batal') badge = '<span class="badge-status">' + t.status + '</span>';
+        else {
+            const sisa = paySisa(t);
+            badge = '<span class="badge-status badge-warning">Pending ' + (sisa > 0 ? payClock(sisa) : '') + '</span>';
+        }
+        const bisaBayar = (t.status === 'Pending' && paySisa(t) > 0);
+        return `
         <tr>
             <td>${t.id}</td>
-            <td>${t.paket} - ${t.tier}</td>
+            <td>${t.paket} - ${t.tier}<br><small style="opacity:0.7;">${t.method || 'QRIS'}</small></td>
             <td>${t.tier || t.durasi}</td>
             <td>Rp ${t.total.toLocaleString('id-ID')}</td>
             <td>${t.tanggal}</td>
-            <td><span class="badge-status ${t.status === 'Sukses' ? 'badge-success' : 'badge-warning'}">${t.status}</span></td>
-        </tr>
-    `).join('');
+            <td>${badge}${bisaBayar ? `<br><button class="card-btn" style="margin-top:6px;padding:4px 10px;font-size:0.7rem;" onclick='showPaymentPopup(${JSON.stringify(t.id)})'>Bayar</button>` : ''}</td>
+        </tr>`;
+    }).join('');
 }
 
 // ==================== INIT ====================

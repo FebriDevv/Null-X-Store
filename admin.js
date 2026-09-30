@@ -49,13 +49,15 @@ let kontak = JSON.parse(localStorage.getItem('nx_kontak')) || {
     wa: "6281234567890",
     discord: "https://discord.gg/nullex"
 };
+let pembayaran = JSON.parse(localStorage.getItem('nx_pembayaran')) || {
+    dana: "083869704161",
+    gopay: "",
+    qris: "",
+    menit: 15
+};
 
 function saveAdminData() {
-    localStorage.setItem('nx_paket', JSON.stringify(paket));
-    localStorage.setItem('nx_faq', JSON.stringify(faq));
-    localStorage.setItem('nx_transaksi', JSON.stringify(transaksi));
-    localStorage.setItem('nx_diskon', JSON.stringify(diskon));
-    localStorage.setItem('nx_kontak', JSON.stringify(kontak));
+    saveAdminDataLocal();
     // dorong semua ke database online biar user di Netlify ikut kebawa
     if (fbOn()) { fsSaveSnapshot(fsSnapshot()).catch(() => {}); return; }
     pushAdminKey('paket', paket);
@@ -63,6 +65,7 @@ function saveAdminData() {
     pushAdminKey('transaksi', transaksi);
     pushAdminKey('diskon', diskon);
     pushAdminKey('kontak', kontak);
+    pushAdminKey('pembayaran', pembayaran);
 }
 
 function pushAdminKey(key, value) {
@@ -84,6 +87,7 @@ async function loadAdminShared() {
                 if (Array.isArray(d.transaksi)) transaksi = d.transaksi;
                 if (Array.isArray(d.diskon) && d.diskon.length) diskon = d.diskon;
                 if (d.kontak && d.kontak.wa) kontak = d.kontak;
+                if (d.pembayaran && (d.pembayaran.dana || d.pembayaran.gopay || d.pembayaran.qris)) pembayaran = d.pembayaran;
             }
             try {
                 const fu = await fsListUsers();
@@ -104,6 +108,7 @@ async function loadAdminShared() {
             if (Array.isArray(j.data.transaksi)) transaksi = j.data.transaksi;
             if (Array.isArray(j.data.diskon) && j.data.diskon.length) diskon = j.data.diskon;
             if (j.data.kontak && j.data.kontak.wa) kontak = j.data.kontak;
+            if (j.data.pembayaran && (j.data.pembayaran.dana || j.data.pembayaran.gopay || j.data.pembayaran.qris)) pembayaran = j.data.pembayaran;
             if (Array.isArray(j.users) && j.users.length) {
                 const lokal = users.map(u => u.email);
                 j.users.forEach(u => { if (!lokal.includes(u.email)) users.push({ email: u.email, username: u.username, password: '' }); });
@@ -119,6 +124,7 @@ function saveAdminDataLocal() {
     localStorage.setItem('nx_transaksi', JSON.stringify(transaksi));
     localStorage.setItem('nx_diskon', JSON.stringify(diskon));
     localStorage.setItem('nx_kontak', JSON.stringify(kontak));
+    localStorage.setItem('nx_pembayaran', JSON.stringify(pembayaran));
 }
 
 // ==================== MODAL SYSTEM ====================
@@ -169,6 +175,7 @@ function showAdminPage(pageId, e) {
     if (pageId === 'produk') renderAdminProduk();
     if (pageId === 'faq') renderAdminFAQ();
     if (pageId === 'transaksi') renderAdminTransaksi();
+    if (pageId === 'bayar') renderAdminBayar();
     if (pageId === 'users') loadUsersAdmin();
     if (pageId === 'diskon') renderAdminDiskon();
     if (pageId === 'kontak') renderAdminKontak();
@@ -277,6 +284,25 @@ function exportUsersCSV() {
     showAlert('Berhasil', 'File users-nullx.csv ke-download.', 'success');
 }
 
+// ==================== PEMBAYARAN (DANA/GOPAY/QRIS) ====================
+function renderAdminBayar() {
+    document.getElementById('bayar-dana').value = pembayaran.dana || '';
+    document.getElementById('bayar-gopay').value = pembayaran.gopay || '';
+    document.getElementById('bayar-qris').value = pembayaran.qris || '';
+    document.getElementById('bayar-menit').value = pembayaran.menit || 15;
+}
+
+function simpanPembayaran() {
+    const dana = document.getElementById('bayar-dana').value.trim();
+    const gopay = document.getElementById('bayar-gopay').value.trim();
+    const qris = document.getElementById('bayar-qris').value.trim();
+    const menit = parseInt(document.getElementById('bayar-menit').value) || 15;
+    if (!dana && !gopay && !qris) { showAlert('Field Kosong', 'Isi minimal 1 metode (Dana/GoPay/QRIS).', 'warning'); return; }
+    pembayaran = { dana, gopay, qris, menit: Math.min(120, Math.max(1, menit)) };
+    saveAdminData();
+    showAlert('Pembayaran Disimpan', 'Nomor Dana/GoPay/QRIS + batas ' + pembayaran.menit + ' menit langsung live di web user.', 'success');
+}
+
 // ==================== PAKET ====================
 function tambahPaket() {
     const nama = document.getElementById('prod-nama').value.trim();
@@ -382,7 +408,7 @@ function renderAdminTransaksi() {
         <tr>
             <td>${t.id}</td>
             <td><strong>${t.user}</strong></td>
-            <td>${t.paket} - ${t.tier}</td>
+            <td>${t.paket} - ${t.tier}<br><small style="opacity:0.7;">${t.method || 'QRIS'}</small></td>
             <td>${t.durasi} ${t.satuan}</td>
             <td>Rp ${(t.total || 0).toLocaleString('id-ID')}</td>
             <td>${t.tanggal}</td>

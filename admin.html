@@ -24,6 +24,7 @@
             <li><a onclick="showAdminPage('produk', event)" class="nav-link">Paket</a></li>
             <li><a onclick="showAdminPage('faq', event)" class="nav-link">FAQ</a></li>
             <li><a onclick="showAdminPage('transaksi', event)" class="nav-link">Transaksi</a></li>
+            <li><a onclick="showAdminPage('bayar', event)" class="nav-link">Bayar</a></li>
             <li><a onclick="showAdminPage('users', event)" class="nav-link">Users</a></li>
             <li><a onclick="showAdminPage('diskon', event)" class="nav-link">Diskon</a></li>
             <li><a onclick="showAdminPage('kontak', event)" class="nav-link">Kontak</a></li>
@@ -145,6 +146,38 @@
                     <thead><tr><th>ID</th><th>User</th><th>Paket</th><th>Durasi</th><th>Total</th><th>Tanggal</th><th>Status</th><th>Aksi</th></tr></thead>
                     <tbody id="admin-transaksi-body"></tbody>
                 </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- PENGATURAN PEMBAYARAN -->
+    <div id="admin-bayar-page" class="page">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-label">PEMBAYARAN</span>
+                <h2 class="section-title">Metode <span class="text-gradient">Bayar</span></h2>
+                <p class="section-sub">Nomor Dana/GoPay + QR QRIS + batas waktu. Langsung live di web user.</p>
+            </div>
+            <div class="admin-form" style="flex-direction: column; align-items: stretch; gap: 1rem;">
+                <div class="input-group">
+                    <label>Nomor DANA</label>
+                    <input type="text" id="bayar-dana" placeholder="0838xxxxxxx">
+                </div>
+                <div class="input-group">
+                    <label>Nomor GoPay</label>
+                    <input type="text" id="bayar-gopay" placeholder="0838xxxxxxx">
+                </div>
+                <div class="input-group">
+                    <label>Link Gambar QRIS (opsional, kosong = QR otomatis)</label>
+                    <input type="text" id="bayar-qris" placeholder="https://.../qris.png">
+                </div>
+                <div class="input-group">
+                    <label>Batas Waktu Bayar (menit)</label>
+                    <input type="number" id="bayar-menit" min="1" max="120" placeholder="15">
+                </div>
+                <button class="btn-glow" onclick="simpanPembayaran()">
+                    <span>Simpan Pembayaran</span>
+                </button>
             </div>
         </div>
     </div>

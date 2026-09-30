@@ -1136,6 +1136,58 @@ footer {
 .payment-wa:hover { background: #20BD5A; transform: translateY(-1px); }
 .payment-discord { background: #5865F2; }
 .payment-discord:hover { background: #4752C4; transform: translateY(-1px); }
+.pay-timer-box {
+    text-align: center;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #fbbf24;
+    background: rgba(251,191,36,0.08);
+    border: 1px solid rgba(251,191,36,0.25);
+    border-radius: 10px;
+    padding: 0.6rem;
+    margin-bottom: 1rem;
+}
+.pay-timer-box span { font-family: var(--font-display); font-size: 1.1rem; letter-spacing: 1px; }
+.pay-tabs { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
+.pay-tab {
+    flex: 1;
+    padding: 0.6rem;
+    border-radius: 10px;
+    border: 1px solid rgba(255,255,255,0.12);
+    background: transparent;
+    color: var(--text-muted);
+    font-weight: 700;
+    font-size: 0.8rem;
+    cursor: pointer;
+    font-family: var(--font-body);
+}
+.pay-tab.active { background: var(--primary); border-color: var(--primary); color: #fff; }
+.pay-number-box {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    background: rgba(255,255,255,0.04);
+    border: 1px dashed rgba(255,255,255,0.2);
+    border-radius: 12px;
+    padding: 0.9rem 1rem;
+    font-size: 1.25rem;
+    font-weight: 700;
+    font-family: var(--font-display);
+    letter-spacing: 1px;
+    margin-bottom: 0.5rem;
+}
+.pay-copy-btn {
+    padding: 0.45rem 1rem;
+    border-radius: 8px;
+    border: none;
+    background: var(--primary);
+    color: #fff;
+    font-weight: 700;
+    font-size: 0.75rem;
+    cursor: pointer;
+    font-family: var(--font-body);
+}
 
 /* ==================== ADMIN TIER INPUT ==================== */
 .tier-features-input {

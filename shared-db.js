@@ -131,6 +131,7 @@ function fsSnapshot() {
         faq: (typeof faq !== 'undefined') ? faq : [],
         transaksi: (typeof transaksi !== 'undefined') ? transaksi : [],
         diskon: (typeof diskon !== 'undefined') ? diskon : [],
-        kontak: (typeof kontak !== 'undefined') ? kontak : {}
+        kontak: (typeof kontak !== 'undefined') ? kontak : {},
+        pembayaran: (typeof pembayaran !== 'undefined') ? pembayaran : { dana: '083869704161', gopay: '', qris: '', menit: 15 }
     };
 }
