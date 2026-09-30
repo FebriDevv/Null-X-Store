@@ -57,6 +57,7 @@ function saveAdminData() {
     localStorage.setItem('nx_diskon', JSON.stringify(diskon));
     localStorage.setItem('nx_kontak', JSON.stringify(kontak));
     // dorong semua ke database online biar user di Netlify ikut kebawa
+    if (fbOn()) { fsSaveSnapshot(fsSnapshot()).catch(() => {}); return; }
     pushAdminKey('paket', paket);
     pushAdminKey('faq', faq);
     pushAdminKey('transaksi', transaksi);
@@ -74,6 +75,25 @@ function pushAdminKey(key, value) {
 }
 
 async function loadAdminShared() {
+    if (fbOn()) {
+        try {
+            const d = await fsGetData();
+            if (d) {
+                if (Array.isArray(d.paket) && d.paket.length) paket = d.paket;
+                if (Array.isArray(d.faq) && d.faq.length) faq = d.faq;
+                if (Array.isArray(d.transaksi)) transaksi = d.transaksi;
+                if (Array.isArray(d.diskon) && d.diskon.length) diskon = d.diskon;
+                if (d.kontak && d.kontak.wa) kontak = d.kontak;
+            }
+            try {
+                const fu = await fsListUsers();
+                const lokal = users.map(u => u.email);
+                fu.forEach(u => { if (!lokal.includes(u.email)) users.push({ email: u.email, username: u.username, password: '' }); });
+            } catch (e) { /* users opsional */ }
+            saveAdminDataLocal();
+            return;
+        } catch (e) { console.warn('loadAdminShared firebase gagal:', e); }
+    }
     if (!SHEETS_URL) return;
     try {
         const res = await fetch(SHEETS_URL + '?action=load_all');
@@ -179,7 +199,17 @@ async function loadUsersAdmin() {
     // 1) lokal (browser admin ini aja)
     users.forEach(u => gabungan.push({ email: u.email, username: u.username, tanggal: '-', sumber: 'Lokal' }));
 
-    // 2) Google Sheets (semua HP, database asli)
+    // 2) Firebase (semua HP, database resmi) - prioritas
+    if (fbOn()) {
+        try {
+            const fu = await fsListUsers();
+            fu.forEach(u => {
+                if (!gabungan.find(x => x.email === u.email)) gabungan.push({ ...u, sumber: 'Firebase' });
+            });
+        } catch (e) { console.warn('fsListUsers gagal:', e); }
+    }
+
+    // 3) Google Sheets (semua HP, database asli)
     if (SHEETS_URL) {
         try {
             const res = await fetch(SHEETS_URL + '?action=list_users');

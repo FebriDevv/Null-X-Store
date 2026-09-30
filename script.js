@@ -94,6 +94,7 @@ function saveData() {
 // ==================== SYNC ONLINE (biar Netlify kebawa) ====================
 // GET load_all saat buka web, POST save_key tiap ada perubahan.
 function pushKey(key, value) {
+    if (fbOn()) { fsSaveSnapshot(fsSnapshot()).catch(() => {}); return; }
     if (!SHEETS_URL) return;
     fetch(SHEETS_URL, {
         method: 'POST',
@@ -102,23 +103,31 @@ function pushKey(key, value) {
     }).catch(() => {});
 }
 
+function applyShared(d) {
+    if (Array.isArray(d.paket) && d.paket.length) paket = d.paket;
+    if (Array.isArray(d.faq) && d.faq.length) faq = d.faq;
+    if (Array.isArray(d.transaksi)) transaksi = d.transaksi;
+    if (Array.isArray(d.diskon) && d.diskon.length) diskon = d.diskon;
+    if (d.kontak && d.kontak.wa) kontak = d.kontak;
+    localStorage.setItem('nx_paket', JSON.stringify(paket));
+    localStorage.setItem('nx_faq', JSON.stringify(faq));
+    localStorage.setItem('nx_transaksi', JSON.stringify(transaksi));
+    localStorage.setItem('nx_diskon', JSON.stringify(diskon));
+    localStorage.setItem('nx_kontak', JSON.stringify(kontak));
+}
+
 async function loadShared() {
+    if (fbOn()) {
+        try {
+            const d = await fsGetData();
+            if (d) { applyShared(d); return; }
+        } catch (e) { console.warn('loadShared firebase gagal:', e); }
+    }
     if (!SHEETS_URL) return;
     try {
         const res = await fetch(SHEETS_URL + '?action=load_all');
         const j = await res.json();
-        if (j.success && j.data) {
-            if (Array.isArray(j.data.paket) && j.data.paket.length) paket = j.data.paket;
-            if (Array.isArray(j.data.faq) && j.data.faq.length) faq = j.data.faq;
-            if (Array.isArray(j.data.transaksi)) transaksi = j.data.transaksi;
-            if (Array.isArray(j.data.diskon) && j.data.diskon.length) diskon = j.data.diskon;
-            if (j.data.kontak && j.data.kontak.wa) kontak = j.data.kontak;
-            localStorage.setItem('nx_paket', JSON.stringify(paket));
-            localStorage.setItem('nx_faq', JSON.stringify(faq));
-            localStorage.setItem('nx_transaksi', JSON.stringify(transaksi));
-            localStorage.setItem('nx_diskon', JSON.stringify(diskon));
-            localStorage.setItem('nx_kontak', JSON.stringify(kontak));
-        }
+        if (j.success && j.data) applyShared(j.data);
     } catch (e) { console.warn('loadShared gagal, pakai lokal:', e); }
 }
 
@@ -270,13 +279,30 @@ async function handleAuth(event) {
     const oldBtn = btn.innerText;
     btn.innerText = 'Loading...';
 
-    // 1) Coba Google Sheets dulu (paling cocok buat GitHub + Netlify, tanpa hosting PHP)
-    // 2) Kalau gagal, coba api.php (buat yang punya hosting PHP)
-    // 3) Terakhir fallback localStorage (offline, pindah HP hilang)
+    // 1) Firebase dulu (kalau diisi: auth + database resmi, reset pw via Gmail otomatis)
+    // 2) Google Sheets (tanpa hosting PHP)
+    // 3) api.php (buat yang punya hosting PHP)
+    // 4) Terakhir fallback localStorage (offline, pindah HP hilang)
     try {
         let r = null;
-        try { r = await sheetsCall(isLoginMode ? 'login' : 'register', { email, username, password }); }
-        catch (eSheets) { r = await apiCall(isLoginMode ? 'login' : 'register', { email, username, password }); }
+        if (fbOn()) {
+            if (!isLoginMode) {
+                if (username.length < 3) { showAlert('Username Terlalu Pendek', 'Username minimal 3 karakter.', 'warning'); return; }
+                if (password.length < 6) { showAlert('Password Terlalu Pendek', 'Daftar via database minimal 6 karakter.', 'warning'); return; }
+            }
+            try { r = isLoginMode ? await fbLogin(email, password) : await fbRegister(email, username, password); }
+            catch (eFb) {
+                const m = String((eFb && eFb.message) || 'Gagal.');
+                if (/terdaftar|salah|karakter|email|banyak|Firebase:/i.test(m)) {
+                    showAlert(isLoginMode ? 'Gagal Login' : 'Gagal Daftar', m, 'error');
+                    return;
+                }
+                throw eFb; // network error -> fallback di bawah
+            }
+        } else {
+            try { r = await sheetsCall(isLoginMode ? 'login' : 'register', { email, username, password }); }
+            catch (eSheets) { r = await apiCall(isLoginMode ? 'login' : 'register', { email, username, password }); }
+        }
 
         if (isLoginMode) {
             if (r.success) { loginSukses(r.user); return; }
@@ -361,10 +387,15 @@ function forgotStep1() {
             if (!email) { showAlert('Field Kosong', 'Isi email dulu.', 'warning'); return; }
             resetEmail = email;
             try {
+                if (fbOn()) {
+                    await fbReset(email);
+                    showAlert('Link Terkirim', 'Link reset dikirim ke ' + email + '. Buka Gmail (cek inbox/spam) > klik link > buat password baru.', 'success');
+                    return;
+                }
                 const r = await sheetsCall('request_reset', { email });
                 if (r.success) setTimeout(() => forgotStep2(), 300);
                 else showAlert('Gagal', r.message, 'error');
-            } catch (e) { showAlert('Gagal', 'Tidak bisa hubungi database. Cek SHEETS_URL.', 'error'); }
+            } catch (e) { showAlert('Gagal', String((e && e.message) || 'Tidak bisa hubungi database.'), 'error'); }
         }
     });
 }
