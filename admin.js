@@ -354,8 +354,14 @@ function renderAdminProduk() {
                 ${p.tiers.map(t => `<div style="font-size:0.8rem; color:#a1a1aa;">${t.label} — Rp ${t.harga.toLocaleString('id-ID')}</div>`).join('')}
             </td>
             <td>
-                <button class="btn-outline" style="padding:0.35rem 0.85rem; font-size:0.75rem; border-color:rgba(139,92,246,0.4); color:#a78bfa; margin-right:0.4rem;" onclick="editPaket(${p.id})">Edit</button>
-                <button class="btn-outline" style="padding:0.35rem 0.85rem; font-size:0.75rem; border-color:rgba(239,68,68,0.3); color:#ef4444;" onclick="hapusPaket(${p.id})">Hapus</button>
+                <button onclick="editPaket(${p.id})" title="Edit Paket" style="display:inline-flex;align-items:center;gap:0.35rem;padding:0.4rem 0.9rem;font-size:0.75rem;font-weight:600;color:#c4b5fd;background:linear-gradient(135deg,rgba(139,92,246,0.15),rgba(99,102,241,0.08));border:1px solid rgba(139,92,246,0.45);border-radius:8px;cursor:pointer;margin-right:0.5rem;transition:all 0.25s ease;box-shadow:0 0 0 0 rgba(139,92,246,0);">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
+                    Edit
+                </button>
+                <button onclick="hapusPaket(${p.id})" title="Hapus Paket" style="display:inline-flex;align-items:center;gap:0.35rem;padding:0.4rem 0.9rem;font-size:0.75rem;font-weight:600;color:#fca5a5;background:linear-gradient(135deg,rgba(239,68,68,0.12),rgba(220,38,38,0.06));border:1px solid rgba(239,68,68,0.35);border-radius:8px;cursor:pointer;transition:all 0.25s ease;">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                    Hapus
+                </button>
             </td>
         </tr>
     `).join('');
@@ -426,8 +432,14 @@ function renderAdminFAQ() {
             <td><strong>${f.tanya}</strong></td>
             <td>${f.jawab}</td>
             <td>
-                <button class="btn-outline" style="padding:0.35rem 0.85rem; font-size:0.75rem; border-color:rgba(139,92,246,0.4); color:#a78bfa; margin-right:0.4rem;" onclick="editFAQ(${f.id})">Edit</button>
-                <button class="btn-outline" style="padding:0.35rem 0.85rem; font-size:0.75rem; border-color:rgba(239,68,68,0.3); color:#ef4444;" onclick="hapusFAQ(${f.id})">Hapus</button>
+                <button onclick="editFAQ(${f.id})" title="Edit FAQ" style="display:inline-flex;align-items:center;gap:0.35rem;padding:0.4rem 0.9rem;font-size:0.75rem;font-weight:600;color:#c4b5fd;background:linear-gradient(135deg,rgba(139,92,246,0.15),rgba(99,102,241,0.08));border:1px solid rgba(139,92,246,0.45);border-radius:8px;cursor:pointer;margin-right:0.5rem;transition:all 0.25s ease;box-shadow:0 0 0 0 rgba(139,92,246,0);">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
+                    Edit
+                </button>
+                <button onclick="hapusFAQ(${f.id})" title="Hapus FAQ" style="display:inline-flex;align-items:center;gap:0.35rem;padding:0.4rem 0.9rem;font-size:0.75rem;font-weight:600;color:#fca5a5;background:linear-gradient(135deg,rgba(239,68,68,0.12),rgba(220,38,38,0.06));border:1px solid rgba(239,68,68,0.35);border-radius:8px;cursor:pointer;transition:all 0.25s ease;">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                    Hapus
+                </button>
             </td>
         </tr>
     `).join('');
@@ -521,6 +533,31 @@ function tambahDiskon() {
     showAlert('Diskon Ditambahkan', 'Kode ' + kode + ' sekarang aktif.', 'success');
 }
 
+function editDiskon(kode) {
+    const d = diskon.find(x => x.kode === kode);
+    if (!d) return;
+    showModal({
+        title: 'Edit Diskon',
+        type: 'info',
+        customHTML: `
+            <div class="order-field"><label>KODE DISKON</label><input type="text" id="ed-kode" value="${d.kode}" style="text-transform:uppercase;"></div>
+            <div class="order-field"><label>PERSEN (%)</label><input type="number" id="ed-persen" value="${d.persen}" min="1" max="100"></div>`,
+        confirmText: 'Simpan',
+        showCancel: true,
+        cancelText: 'Batal',
+        onConfirm: () => {
+            const newKode = document.getElementById('ed-kode').value.trim().toUpperCase();
+            const newPersen = parseInt(document.getElementById('ed-persen').value);
+            if (!newKode || !newPersen || newPersen <= 0 || newPersen > 100) { showAlert('Data Tidak Valid', 'Isi kode dan persen (1-100).', 'warning'); return; }
+            if (newKode !== kode && diskon.find(x => x.kode === newKode)) { showAlert('Kode Duplikat', 'Kode diskon ini sudah ada.', 'error'); return; }
+            d.kode = newKode; d.persen = newPersen;
+            saveAdminData();
+            renderAdminDiskon();
+            showAlert('Diskon Diperbarui', 'Kode ' + newKode + ' berhasil disimpan.', 'success');
+        }
+    });
+}
+
 function hapusDiskon(kode) {
     showConfirm('Hapus Diskon', 'Kode diskon ini akan dihapus. Lanjutkan?', () => {
         diskon = diskon.filter(d => d.kode !== kode);
@@ -541,7 +578,16 @@ function renderAdminDiskon() {
         <tr>
             <td><strong>${d.kode}</strong></td>
             <td>${d.persen}%</td>
-            <td><button class="btn-outline" style="padding:0.35rem 0.85rem; font-size:0.75rem; border-color:rgba(239,68,68,0.3); color:#ef4444;" onclick="hapusDiskon('${d.kode}')">Hapus</button></td>
+            <td>
+                <button onclick="editDiskon('${d.kode}')" title="Edit Diskon" style="display:inline-flex;align-items:center;gap:0.35rem;padding:0.4rem 0.9rem;font-size:0.75rem;font-weight:600;color:#c4b5fd;background:linear-gradient(135deg,rgba(139,92,246,0.15),rgba(99,102,241,0.08));border:1px solid rgba(139,92,246,0.45);border-radius:8px;cursor:pointer;margin-right:0.5rem;transition:all 0.25s ease;box-shadow:0 0 0 0 rgba(139,92,246,0);">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
+                    Edit
+                </button>
+                <button onclick="hapusDiskon('${d.kode}')" title="Hapus Diskon" style="display:inline-flex;align-items:center;gap:0.35rem;padding:0.4rem 0.9rem;font-size:0.75rem;font-weight:600;color:#fca5a5;background:linear-gradient(135deg,rgba(239,68,68,0.12),rgba(220,38,38,0.06));border:1px solid rgba(239,68,68,0.35);border-radius:8px;cursor:pointer;transition:all 0.25s ease;">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                    Hapus
+                </button>
+            </td>
         </tr>
     `).join('');
 }
