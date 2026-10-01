@@ -353,9 +353,43 @@ function renderAdminProduk() {
             <td>
                 ${p.tiers.map(t => `<div style="font-size:0.8rem; color:#a1a1aa;">${t.label} — Rp ${t.harga.toLocaleString('id-ID')}</div>`).join('')}
             </td>
-            <td><button class="btn-outline" style="padding:0.35rem 0.85rem; font-size:0.75rem; border-color:rgba(239,68,68,0.3); color:#ef4444;" onclick="hapusPaket(${p.id})">Hapus</button></td>
+            <td>
+                <button class="btn-outline" style="padding:0.35rem 0.85rem; font-size:0.75rem; border-color:rgba(139,92,246,0.4); color:#a78bfa; margin-right:0.4rem;" onclick="editPaket(${p.id})">Edit</button>
+                <button class="btn-outline" style="padding:0.35rem 0.85rem; font-size:0.75rem; border-color:rgba(239,68,68,0.3); color:#ef4444;" onclick="hapusPaket(${p.id})">Hapus</button>
+            </td>
         </tr>
     `).join('');
+}
+
+function editPaket(id) {
+    const p = paket.find(x => x.id === id);
+    if (!p) return;
+    showModal({
+        title: 'Edit Paket',
+        type: 'info',
+        customHTML: `
+            <div class="order-field"><label>NAMA PAKET</label><input type="text" id="ep-nama" value="${p.nama}"></div>
+            <div class="order-field"><label>DESKRIPSI</label><input type="text" id="ep-desc" value="${p.desc}"></div>
+            <div class="order-field"><label>TIER HARGA (per baris: Label — Harga)</label><textarea id="ep-tiers" rows="8" style="width:100%;background:#0a0a0a;border:1px solid #1a1a1a;border-radius:8px;color:#ededed;padding:0.6rem;font-family:monospace;">${p.tiers.map(t => t.label + ' — ' + t.harga).join('\n')}</textarea></div>`,
+        confirmText: 'Simpan',
+        showCancel: true,
+        cancelText: 'Batal',
+        onConfirm: () => {
+            const nama = document.getElementById('ep-nama').value.trim();
+            const desc = document.getElementById('ep-desc').value.trim();
+            const tiersRaw = document.getElementById('ep-tiers').value.trim();
+            if (!nama || !desc) { showAlert('Field Kosong', 'Isi nama dan deskripsi.', 'warning'); return; }
+            const tiers = tiersRaw.split('\n').map(line => {
+                const parts = line.split('—').map(s => s.trim());
+                return { label: parts[0], days: 1, harga: parseInt(parts[1]) || 0 };
+            }).filter(t => t.label && t.harga > 0);
+            if (tiers.length === 0) { showAlert('Tier Kosong', 'Isi minimal 1 tier.', 'warning'); return; }
+            p.nama = nama; p.desc = desc; p.tiers = tiers;
+            saveAdminData();
+            renderAdminProduk();
+            showAlert('Paket Diperbarui', nama + ' berhasil disimpan.', 'success');
+        }
+    });
 }
 
 // ==================== FAQ ====================
@@ -391,9 +425,36 @@ function renderAdminFAQ() {
         <tr>
             <td><strong>${f.tanya}</strong></td>
             <td>${f.jawab}</td>
-            <td><button class="btn-outline" style="padding:0.35rem 0.85rem; font-size:0.75rem; border-color:rgba(239,68,68,0.3); color:#ef4444;" onclick="hapusFAQ(${f.id})">Hapus</button></td>
+            <td>
+                <button class="btn-outline" style="padding:0.35rem 0.85rem; font-size:0.75rem; border-color:rgba(139,92,246,0.4); color:#a78bfa; margin-right:0.4rem;" onclick="editFAQ(${f.id})">Edit</button>
+                <button class="btn-outline" style="padding:0.35rem 0.85rem; font-size:0.75rem; border-color:rgba(239,68,68,0.3); color:#ef4444;" onclick="hapusFAQ(${f.id})">Hapus</button>
+            </td>
         </tr>
     `).join('');
+}
+
+function editFAQ(id) {
+    const f = faq.find(x => x.id === id);
+    if (!f) return;
+    showModal({
+        title: 'Edit FAQ',
+        type: 'info',
+        customHTML: `
+            <div class="order-field"><label>PERTANYAAN</label><input type="text" id="ef-tanya" value="${f.tanya}"></div>
+            <div class="order-field"><label>JAWABAN</label><textarea id="ef-jawab" rows="4" style="width:100%;background:#0a0a0a;border:1px solid #1a1a1a;border-radius:8px;color:#ededed;padding:0.6rem;">${f.jawab}</textarea></div>`,
+        confirmText: 'Simpan',
+        showCancel: true,
+        cancelText: 'Batal',
+        onConfirm: () => {
+            const tanya = document.getElementById('ef-tanya').value.trim();
+            const jawab = document.getElementById('ef-jawab').value.trim();
+            if (!tanya || !jawab) { showAlert('Field Kosong', 'Isi pertanyaan dan jawaban.', 'warning'); return; }
+            f.tanya = tanya; f.jawab = jawab;
+            saveAdminData();
+            renderAdminFAQ();
+            showAlert('FAQ Diperbarui', 'FAQ berhasil disimpan.', 'success');
+        }
+    });
 }
 
 // ==================== TRANSAKSI ====================
