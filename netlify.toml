@@ -8,3 +8,20 @@
     X-Frame-Options = "DENY"
     X-Content-Type-Options = "nosniff"
     Content-Security-Policy = "frame-ancestors 'none'"
+
+# Jangan cache HTML (biar perubahan admin langsung kelihatan setelah deploy)
+[[headers]]
+  for = "/*.html"
+  [headers.values]
+    Cache-Control = "no-cache, no-store, must-revalidate"
+
+# Asset boleh cache tapi harus revalidasi -> browser tetap dapat file terbaru
+[[headers]]
+  for = "/*.css"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+[[headers]]
+  for = "/*.js"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
