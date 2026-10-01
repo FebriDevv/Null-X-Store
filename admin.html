@@ -264,5 +264,23 @@
 
     <script src="shared-db.js"></script>
     <script src="admin.js"></script>
+    <script>
+        // Hapus badge "Powered by Netlify" yang disisipkan otomatis di level edge
+        (function() {
+            var cari = function() {
+                document.querySelectorAll('a, div, span, iframe').forEach(function(el) {
+                    var t = (el.textContent || '').trim();
+                    var h = el.getAttribute && el.getAttribute('href') || '';
+                    if (t === 'Powered by Netlify' || h.indexOf('netlify.com') !== -1) {
+                        if (el.children.length === 0 || t.indexOf('Netlify') !== -1) el.remove();
+                    }
+                });
+            };
+            cari();
+            setTimeout(cari, 500);
+            setTimeout(cari, 1500);
+            document.addEventListener('DOMContentLoaded', cari);
+        })();
+    </script>
 </body>
 </html>
