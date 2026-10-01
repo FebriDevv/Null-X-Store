@@ -267,19 +267,30 @@
     <script>
         // Hapus badge "Powered by Netlify" yang disisipkan otomatis di level edge
         (function() {
+            var style = document.createElement('style');
+            style.textContent = 'a[href*="netlify.com"], div:has(> a[href*="netlify.com"]), iframe[src*="netlify.com"] { display: none !important; }';
+            document.head.appendChild(style);
+
             var cari = function() {
                 document.querySelectorAll('a, div, span, iframe').forEach(function(el) {
                     var t = (el.textContent || '').trim();
                     var h = el.getAttribute && el.getAttribute('href') || '';
-                    if (t === 'Powered by Netlify' || h.indexOf('netlify.com') !== -1) {
+                    var s = el.getAttribute && el.getAttribute('src') || '';
+                    if (t === 'Powered by Netlify' || h.indexOf('netlify.com') !== -1 || s.indexOf('netlify.com') !== -1) {
                         if (el.children.length === 0 || t.indexOf('Netlify') !== -1) el.remove();
                     }
                 });
             };
+
             cari();
-            setTimeout(cari, 500);
+            setTimeout(cari, 300);
+            setTimeout(cari, 800);
             setTimeout(cari, 1500);
+            setTimeout(cari, 3000);
             document.addEventListener('DOMContentLoaded', cari);
+
+            var obs = new MutationObserver(function() { cari(); });
+            obs.observe(document.documentElement, { childList: true, subtree: true });
         })();
     </script>
 </body>
