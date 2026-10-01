@@ -135,30 +135,124 @@ const ICONS = {
     info:    '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>'
 };
 
+// Escape HTML -> data admin (nama/deskripsi/FAQ) tidak bisa merusak markup atau diselipin script.
+function esc(value) {
+    return String(value == null ? '' : value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function formatIDR(n) {
+    return 'Rp ' + (Number(n) || 0).toLocaleString('id-ID');
+}
+
+// Ambil + trim nilai field di dalam modal form.
+function val(id) {
+    const el = document.getElementById(id);
+    return el ? String(el.value || '').trim() : '';
+}
+
+// Error validasi DI DALAM modal (bukan modal baru) -> input admin tidak hilang.
+function formError(msg) {
+    const el = document.getElementById('form-error');
+    if (el) {
+        el.textContent = msg;
+        el.hidden = false;
+        el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
+    console.warn('[validasi]', msg);
+    return false;
+}
+function clearFormError() {
+    const el = document.getElementById('form-error');
+    if (el) { el.textContent = ''; el.hidden = true; }
+}
+
 function showModal(options) {
-    const { title, message, type = 'info', confirmText = 'OK', onConfirm, showCancel = false, cancelText = 'Batal', customHTML = null } = options;
+    const {
+        title, message, type = 'info', confirmText = 'OK', onConfirm,
+        showCancel = false, cancelText = 'Batal', customHTML = null,
+        boxClass = '', showClose = false
+    } = options;
     const existing = document.querySelector('.modal-overlay');
     if (existing) existing.remove();
+
+    const isForm = boxClass.indexOf('form-modal') !== -1;
+    const body = customHTML || (typeof message === 'string' ? esc(message) : (message || ''));
 
     const overlay = document.createElement('div');
     overlay.className = 'modal-overlay';
     overlay.innerHTML = `
-        <div class="modal-box">
+        <div class="modal-box ${boxClass}">
+            ${showClose ? '<button type="button" class="modal-x" data-action="x" aria-label="Tutup">&times;</button>' : ''}
             <div class="modal-icon ${type}">${ICONS[type]}</div>
-            <h3 class="modal-title">${title}</h3>
-            <div class="modal-message">${customHTML || message}</div>
+            <h3 class="modal-title">${esc(title)}</h3>
+            <div class="modal-message">${body}</div>
             <div class="modal-actions">
-                ${showCancel ? `<button class="modal-btn modal-btn-secondary" data-action="cancel">${cancelText}</button>` : ''}
-                <button class="modal-btn modal-btn-primary" data-action="confirm">${confirmText}</button>
+                ${showCancel ? `<button type="button" class="modal-btn modal-btn-secondary" data-action="cancel">${esc(cancelText)}</button>` : ''}
+                <button type="button" class="modal-btn modal-btn-primary" data-action="confirm">${esc(confirmText)}</button>
             </div>
         </div>
     `;
     document.body.appendChild(overlay);
     requestAnimationFrame(() => overlay.classList.add('show'));
-    const close = () => { overlay.classList.remove('show'); setTimeout(() => overlay.remove(), 250); };
-    overlay.querySelector('[data-action="confirm"]').onclick = () => { close(); if (onConfirm) onConfirm(); };
-    if (showCancel) overlay.querySelector('[data-action="cancel"]').onclick = close;
+
+    let done = false;
+    const close = () => {
+        if (done) return;
+        done = true;
+        overlay.classList.remove('show');
+        setTimeout(() => overlay.remove(), 250);
+        document.removeEventListener('keydown', onKey);
+    };
+
+    // onConfirm boleh return:
+    //   false            -> modal TETAP terbuka (validasi gagal, input tidak hilang)
+    //   { alert: {...} } -> tutup modal, lalu tampilkan notifikasi sukses
+    const submit = () => {
+        if (done) return;
+        let result;
+        try { result = onConfirm ? onConfirm() : undefined; }
+        catch (err) {
+            console.error(err);
+            if (overlay.querySelector('#form-error')) formError('Terjadi kesalahan saat menyimpan. Cek console browser.');
+            else showAlert('Gagal Menyimpan', String(err && err.message || err), 'error');
+            return;
+        }
+        if (result === false) return;
+        close();
+        if (result && typeof result === 'object' && result.alert) {
+            const a = result.alert;
+            showAlert(a.title, a.message, a.type || 'success');
+        }
+    };
+
+    const onKey = (e) => {
+        if (e.key === 'Escape') { e.preventDefault(); close(); return; }
+        if (isForm && e.key === 'Enter' && !e.shiftKey) {
+            const tag = (e.target.tagName || '').toLowerCase();
+            if (tag === 'input' || tag === 'textarea') { e.preventDefault(); submit(); }
+        }
+    };
+    document.addEventListener('keydown', onKey);
+
+    overlay.querySelector('[data-action="confirm"]').onclick = submit;
+    const cancelBtn = overlay.querySelector('[data-action="cancel"]');
+    if (cancelBtn) cancelBtn.onclick = close;
+    const xBtn = overlay.querySelector('[data-action="x"]');
+    if (xBtn) xBtn.onclick = close;
     overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+
+    if (isForm) {
+        setTimeout(() => {
+            const first = overlay.querySelector('.modal-box input, .modal-box textarea');
+            if (first) first.focus();
+        }, 60);
+    }
+    return { close, overlay };
 }
 function showAlert(t, m, ty = 'info') { showModal({ title: t, message: m, type: ty }); }
 function showConfirm(t, m, cb, ty = 'warning') { showModal({ title: t, message: m, type: ty, showCancel: true, confirmText: 'Ya, Lanjutkan', cancelText: 'Batal', onConfirm: cb }); }
@@ -304,292 +398,478 @@ function simpanPembayaran() {
 }
 
 // ==================== PAKET ====================
-function tambahPaket() {
-    const nama = document.getElementById('prod-nama').value.trim();
-    const desc = document.getElementById('prod-desc').value.trim();
-    const tierInput = document.getElementById('prod-tiers').value.trim();
-
-    if (!nama || !desc) { showAlert('Field Kosong', 'Isi nama dan deskripsi paket.', 'warning'); return; }
-    if (!tierInput) { showAlert('Tier Kosong', 'Isi minimal 1 tier. Format: 1 Day:5000, 7 Days:35000', 'warning'); return; }
-
-    const tiers = tierInput.split(',').map(t => {
-        const parts = t.split(':').map(s => s.trim());
-        const label = parts[0];
-        const harga = parseInt(parts[1]);
-        return { label, days: 1, harga: harga || 0 };
-    }).filter(t => t.label && t.harga > 0);
-
-    if (tiers.length === 0) { showAlert('Tier Tidak Valid', 'Format tier salah. Contoh: 1 Day:5000, 7 Days:35000', 'error'); return; }
-
-    paket.push({ id: Date.now(), nama, desc, tiers });
-    saveAdminData();
-    renderAdminProduk();
-    document.getElementById('prod-nama').value = '';
-    document.getElementById('prod-desc').value = '';
-    document.getElementById('prod-tiers').value = '';
-    showAlert('Paket Ditambahkan', nama + ' berhasil ditambahkan.', 'success');
+// Tambah & Edit sekarang pake SATU form yang sama (openPaketForm) supaya format
+// tier tidak lagi bentrok (dulu tambah pakai "Label:5000, ..." tapi edit pakai "Label — 5000",
+// sehingga desc + features + days ikut hilang tiap kali edit).
+function guessDays(label) {
+    const m = String(label || '').toLowerCase().match(/(\d+)\s*(day|hari|aob|tahun|year|month|bulan|week|minggu)/);
+    if (m) {
+        const n = parseInt(m[1], 10);
+        const unit = m[2];
+        if (unit === 'aob' || unit === 'tahun' || unit === 'year') return 365;
+        if (unit === 'month' || unit === 'bulan') return n * 30;
+        if (unit === 'week' || unit === 'minggu') return n * 7;
+        return n;
+    }
+    const first = String(label || '').match(/(\d+)/);
+    return first ? parseInt(first[1], 10) : 1;
 }
 
+const ICON_EDIT = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>';
+const ICON_TRASH = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>';
+const ICON_PLUS = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>';
+
+// Argumen di-encode -> aman walau kode diskon/data lama bawa karakter aneh,
+// dan tidak bentrok sama tanda kutip di atribut onclick.
+function encArg(a) { return encodeURIComponent(String(a)); }
+function decArg(s) { try { return decodeURIComponent(s); } catch (e) { return s; } }
+
+function rowActions(editFn, delFn, arg) {
+    const enc = encArg(arg);
+    const edit = editFn
+        ? `<button type="button" class="row-btn row-btn-edit" onclick="${editFn}('${enc}')" title="Edit">${ICON_EDIT}<span>Edit</span></button>`
+        : '';
+    return `
+        <div class="row-actions">
+            ${edit}
+            <button type="button" class="row-btn row-btn-del" onclick="${delFn}('${enc}')" title="Hapus">${ICON_TRASH}<span>Hapus</span></button>
+        </div>`;
+}
+
+function emptyRow(colspan, msg) {
+    return `<tr><td colspan="${colspan}"><div class="table-empty">${esc(msg)}</div></td></tr>`;
+}
+
+function tierRowHTML(t, i) {
+    const label = t.label || '';
+    const days = t.days || guessDays(label);
+    return `
+    <div class="tier-row" data-i="${i}">
+        <div class="tier-row-head">
+            <span class="tier-num t-num">${i + 1}</span>
+            <input type="text" class="t-label t-row-label" value="${esc(label)}" placeholder="Label (mis. 1 Day)" oninput="syncTierDays(this)">
+            <input type="number" class="t-days" value="${esc(days)}" min="1" max="3650" title="Jumlah hari" placeholder="Hari">
+            <div class="t-price-wrap">
+                <span>Rp</span>
+                <input type="number" class="t-harga" value="${esc(t.harga || 0)}" min="0" step="1000" placeholder="Harga">
+            </div>
+            <button type="button" class="t-del" onclick="hapusTierBar(this)" title="Hapus tier">&times;</button>
+        </div>
+        <input type="text" class="t-desc" value="${esc(t.desc || '')}" placeholder="Deskripsi tier (opsional, tampil di form order)">
+        <textarea class="t-feat tier-features-input" rows="2" placeholder="Fitur, satu per baris (opsional)">${esc((t.features || []).join('\n'))}</textarea>
+    </div>`;
+}
+
+function renderTierRows(tiers) {
+    const wrap = document.getElementById('tier-list');
+    if (!wrap) return;
+    wrap.innerHTML = tiers.map((t, i) => tierRowHTML(t, i)).join('');
+    updateTierFoot();
+}
+
+function tambahTierBar() {
+    const wrap = document.getElementById('tier-list');
+    if (!wrap) return;
+    const n = wrap.children.length;
+    const div = document.createElement('div');
+    div.innerHTML = tierRowHTML({ label: '', days: 1, harga: 0 }, n);
+    const row = div.firstElementChild;
+    wrap.appendChild(row);
+    updateTierFoot();
+    const first = row.querySelector('.t-label');
+    if (first) first.focus();
+}
+
+function hapusTierBar(btn) {
+    const wrap = document.getElementById('tier-list');
+    if (!wrap) return;
+    if (wrap.children.length <= 1) { formError('Minimal harus ada 1 tier harga.'); return; }
+    btn.closest('.tier-row').remove();
+    updateTierFoot();
+}
+
+// Label "7 Days" -> kolom hari ikut terisi 7 (dulu selalu hardcode 1).
+function syncTierDays(labelInput) {
+    const days = labelInput.closest('.tier-row').querySelector('.t-days');
+    if (days && document.activeElement !== days) days.value = guessDays(labelInput.value);
+}
+
+function updateTierFoot() {
+    const wrap = document.getElementById('tier-list');
+    if (!wrap) return;
+    wrap.querySelectorAll('.tier-num').forEach((el, i) => el.textContent = i + 1);
+    const c = document.getElementById('tier-count');
+    if (c) c.textContent = wrap.children.length;
+}
+
+function collectTiers() {
+    const wrap = document.getElementById('tier-list');
+    if (!wrap) return [];
+    const out = [];
+    wrap.querySelectorAll('.tier-row').forEach(row => {
+        const label = row.querySelector('.t-label').value.trim();
+        const harga = parseInt(row.querySelector('.t-harga').value, 10) || 0;
+        if (!label || harga <= 0) return;
+        const daysRaw = parseInt(row.querySelector('.t-days').value, 10);
+        out.push({
+            label,
+            days: daysRaw > 0 ? daysRaw : guessDays(label),
+            harga,
+            desc: row.querySelector('.t-desc').value.trim(),
+            features: row.querySelector('.t-feat').value.split('\n').map(s => s.trim()).filter(Boolean)
+        });
+    });
+    return out;
+}
+
+function openPaketForm(id) {
+    const isEdit = id !== null && id !== undefined;
+    const p = isEdit ? paket.find(x => x.id === id) : null;
+    if (isEdit && !p) return;
+    const startTiers = isEdit && p.tiers.length ? p.tiers : [{ label: '1 Day', days: 1, harga: 5000 }];
+
+    showModal({
+        title: isEdit ? 'Edit Paket' : 'Tambah Paket',
+        type: 'info',
+        boxClass: 'form-modal',
+        showClose: true,
+        showCancel: true,
+        cancelText: 'Batal',
+        confirmText: isEdit ? 'Simpan Perubahan' : 'Tambah Paket',
+        customHTML: `
+            <div class="form-error" id="form-error" hidden></div>
+            <div class="order-grid-2">
+                <div class="order-field">
+                    <label>Nama Paket</label>
+                    <input type="text" id="fp-nama" value="${esc(p ? p.nama : '')}" placeholder="Contoh: EXTERNAL" maxlength="40" oninput="clearFormError()">
+                </div>
+                <div class="order-field">
+                    <label>Deskripsi</label>
+                    <input type="text" id="fp-desc" value="${esc(p ? p.desc : '')}" placeholder="Paket dasar untuk kebutuhan PC." maxlength="140" oninput="clearFormError()">
+                </div>
+            </div>
+
+            <div class="tier-editor">
+                <div class="tier-editor-head">
+                    <span>Tier Harga <em id="tier-count">0</em></span>
+                    <button type="button" class="tier-add" onclick="tambahTierBar()">${ICON_PLUS} Tambah Tier</button>
+                </div>
+                <div class="tier-cols"><span>Label</span><span>Hari</span><span>Harga</span><span></span></div>
+                <div id="tier-list"></div>
+            </div>`,
+        onConfirm: () => {
+            const nama = val('fp-nama');
+            const desc = val('fp-desc');
+            const tiers = collectTiers();
+
+            if (!nama) return formError('Nama paket wajib diisi.');
+            if (!desc) return formError('Deskripsi paket wajib diisi.');
+            if (paket.some(x => x.nama.toLowerCase() === nama.toLowerCase() && x.id !== (p ? p.id : -1)))
+                return formError('Sudah ada paket bernama "' + nama + '".');
+            if (!tiers.length) return formError('Minimal 1 tier yang punya label + harga di atas 0.');
+
+            if (isEdit) {
+                p.nama = nama; p.desc = desc; p.tiers = tiers;
+            } else {
+                paket.push({ id: Date.now(), nama, desc, tiers });
+            }
+            saveAdminData();
+            renderAdminProduk();
+            renderDashboard();
+            return {
+                alert: {
+                    title: isEdit ? 'Paket Diperbarui' : 'Paket Ditambahkan',
+                    message: nama + ' tersimpan dengan ' + tiers.length + ' tier, langsung live di web user.',
+                    type: 'success'
+                }
+            };
+        }
+    });
+
+    renderTierRows(startTiers);
+}
+
+function tambahPaket() { openPaketForm(null); }
+function editPaket(id) { openPaketForm(Number(decArg(id))); }
+
 function hapusPaket(id) {
-    showConfirm('Hapus Paket', 'Paket ini akan dihapus permanen. Lanjutkan?', () => {
-        paket = paket.filter(p => p.id !== id);
+    id = Number(decArg(id));
+    const p = paket.find(x => x.id === id);
+    if (!p) return;
+    const dipakai = transaksi.filter(t => t.paket === p.nama).length;
+    showConfirm('Hapus Paket', '"' + p.nama + '" akan dihapus permanen' +
+        (dipakai ? ', termasuk ' + dipakai + ' transaksi yang sudah tercatat.' : '.') + ' Lanjutkan?', () => {
+        paket = paket.filter(x => x.id !== id);
         saveAdminData();
         renderAdminProduk();
-        showAlert('Paket Dihapus', 'Paket berhasil dihapus.', 'success');
+        renderDashboard();
+        return { alert: { title: 'Paket Dihapus', message: p.nama + ' berhasil dihapus.', type: 'success' } };
     });
 }
 
 function renderAdminProduk() {
     const tbody = document.getElementById('admin-produk-body');
     if (!tbody) return;
+    const c = document.getElementById('produk-count');
+    if (c) c.textContent = paket.length + ' paket';
     if (paket.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#737373; padding:2rem;">Belum ada paket.</td></tr>';
+        tbody.innerHTML = emptyRow(4, 'Belum ada paket. Klik "Tambah Paket" untuk membuat paket pertama.');
         return;
     }
-    tbody.innerHTML = paket.map(p => `
+    tbody.innerHTML = paket.map(p => {
+        const termurah = p.tiers.reduce((a, b) => (!a || b.harga < a.harga) ? b : a, null);
+        return `
         <tr>
-            <td><strong>${p.nama}</strong></td>
-            <td>${p.desc}</td>
+            <td><strong>${esc(p.nama)}</strong></td>
+            <td class="cell-desc">${esc(p.desc)}</td>
             <td>
-                ${p.tiers.map(t => `<div style="font-size:0.8rem; color:#a1a1aa;">${t.label} — Rp ${t.harga.toLocaleString('id-ID')}</div>`).join('')}
+                <div class="tier-cell">
+                    ${p.tiers.map(t => `<div class="tier-cell-row"><span>${esc(t.label)}</span><b>Rp ${t.harga.toLocaleString('id-ID')}</b></div>`).join('')}
+                </div>
+                ${termurah ? `<div class="tier-cell-foot">Mulai dari <b>Rp ${termurah.harga.toLocaleString('id-ID')}</b></div>` : ''}
             </td>
-            <td>
-                <button onclick="editPaket(${p.id})" title="Edit Paket" style="display:inline-flex;align-items:center;gap:0.35rem;padding:0.4rem 0.9rem;font-size:0.75rem;font-weight:600;color:#c4b5fd;background:linear-gradient(135deg,rgba(139,92,246,0.15),rgba(99,102,241,0.08));border:1px solid rgba(139,92,246,0.45);border-radius:8px;cursor:pointer;margin-right:0.5rem;transition:all 0.25s ease;box-shadow:0 0 0 0 rgba(139,92,246,0);">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
-                    Edit
-                </button>
-                <button onclick="hapusPaket(${p.id})" title="Hapus Paket" style="display:inline-flex;align-items:center;gap:0.35rem;padding:0.4rem 0.9rem;font-size:0.75rem;font-weight:600;color:#fca5a5;background:linear-gradient(135deg,rgba(239,68,68,0.12),rgba(220,38,38,0.06));border:1px solid rgba(239,68,68,0.35);border-radius:8px;cursor:pointer;transition:all 0.25s ease;">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
-                    Hapus
-                </button>
-            </td>
-        </tr>
-    `).join('');
+            <td>${rowActions('editPaket', 'hapusPaket', p.id)}</td>
+        </tr>`;
+    }).join('');
 }
 
-function editPaket(id) {
-    const p = paket.find(x => x.id === id);
-    if (!p) return;
+// ==================== FAQ ====================
+// Sama kayak paket: satu form untuk Tambah & Edit (dulu cuma Edit yg modal,
+// tambah masih form mentah + jawaban di-render tanpa escape).
+function openFAQForm(id) {
+    const isEdit = id !== null && id !== undefined;
+    const f = isEdit ? faq.find(x => x.id === id) : null;
+    if (isEdit && !f) return;
+
     showModal({
-        title: 'Edit Paket',
+        title: isEdit ? 'Edit FAQ' : 'Tambah FAQ',
         type: 'info',
-        customHTML: `
-            <div class="order-field"><label>NAMA PAKET</label><input type="text" id="ep-nama" value="${p.nama}"></div>
-            <div class="order-field"><label>DESKRIPSI</label><input type="text" id="ep-desc" value="${p.desc}"></div>
-            <div class="order-field"><label>TIER HARGA (per baris: Label — Harga)</label><textarea id="ep-tiers" rows="8" style="width:100%;background:#0a0a0a;border:1px solid #1a1a1a;border-radius:8px;color:#ededed;padding:0.6rem;font-family:monospace;">${p.tiers.map(t => t.label + ' — ' + t.harga).join('\n')}</textarea></div>`,
-        confirmText: 'Simpan',
+        boxClass: 'form-modal',
+        showClose: true,
         showCancel: true,
         cancelText: 'Batal',
+        confirmText: isEdit ? 'Simpan Perubahan' : 'Tambah FAQ',
+        customHTML: `
+            <div class="form-error" id="form-error" hidden></div>
+            <div class="order-field">
+                <label>Pertanyaan</label>
+                <input type="text" id="ff-tanya" value="${esc(f ? f.tanya : '')}" placeholder="Bagaimana cara order?" maxlength="160" oninput="clearFormError()">
+            </div>
+            <div class="order-field">
+                <label>Jawaban</label>
+                <textarea id="ff-jawab" rows="4" placeholder="Pilih paket, atur durasi, lalu klik Bayar Sekarang." oninput="clearFormError()">${esc(f ? f.jawab : '')}</textarea>
+            </div>
+            <div class="field-hint">Jawaban tampil di halaman user. Boleh panjang, enter = baris baru.</div>`,
         onConfirm: () => {
-            const nama = document.getElementById('ep-nama').value.trim();
-            const desc = document.getElementById('ep-desc').value.trim();
-            const tiersRaw = document.getElementById('ep-tiers').value.trim();
-            if (!nama || !desc) { showAlert('Field Kosong', 'Isi nama dan deskripsi.', 'warning'); return; }
-            const tiers = tiersRaw.split('\n').map(line => {
-                const parts = line.split('—').map(s => s.trim());
-                return { label: parts[0], days: 1, harga: parseInt(parts[1]) || 0 };
-            }).filter(t => t.label && t.harga > 0);
-            if (tiers.length === 0) { showAlert('Tier Kosong', 'Isi minimal 1 tier.', 'warning'); return; }
-            p.nama = nama; p.desc = desc; p.tiers = tiers;
+            const tanya = val('ff-tanya');
+            const jawab = val('ff-jawab');
+            if (!tanya) return formError('Pertanyaan wajib diisi.');
+            if (!jawab) return formError('Jawaban wajib diisi.');
+            if (faq.some(x => x.tanya.toLowerCase() === tanya.toLowerCase() && x.id !== (f ? f.id : -1)))
+                return formError('Pertanyaan ini sudah ada di daftar FAQ.');
+
+            if (isEdit) { f.tanya = tanya; f.jawab = jawab; }
+            else faq.push({ id: Date.now(), tanya, jawab });
             saveAdminData();
-            renderAdminProduk();
-            showAlert('Paket Diperbarui', nama + ' berhasil disimpan.', 'success');
+            renderAdminFAQ();
+            return {
+                alert: {
+                    title: isEdit ? 'FAQ Diperbarui' : 'FAQ Ditambahkan',
+                    message: isEdit ? 'Perubahan FAQ langsung tampil di web user.' : 'FAQ baru sudah live di web user.',
+                    type: 'success'
+                }
+            };
         }
     });
 }
 
-// ==================== FAQ ====================
-function tambahFAQ() {
-    const tanya = document.getElementById('faq-pertanyaan').value.trim();
-    const jawab = document.getElementById('faq-jawaban').value.trim();
-    if (!tanya || !jawab) { showAlert('Field Kosong', 'Isi pertanyaan dan jawaban.', 'warning'); return; }
-    faq.push({ id: Date.now(), tanya, jawab });
-    saveAdminData();
-    renderAdminFAQ();
-    document.getElementById('faq-pertanyaan').value = '';
-    document.getElementById('faq-jawaban').value = '';
-    showAlert('FAQ Ditambahkan', 'FAQ berhasil ditambahkan.', 'success');
-}
+function tambahFAQ() { openFAQForm(null); }
+function editFAQ(id) { openFAQForm(Number(decArg(id))); }
 
 function hapusFAQ(id) {
-    showConfirm('Hapus FAQ', 'FAQ ini akan dihapus permanen. Lanjutkan?', () => {
-        faq = faq.filter(f => f.id !== id);
+    id = Number(decArg(id));
+    const f = faq.find(x => x.id === id);
+    if (!f) return;
+    showConfirm('Hapus FAQ', '"' + f.tanya.slice(0, 60) + '" akan dihapus permanen. Lanjutkan?', () => {
+        faq = faq.filter(x => x.id !== id);
         saveAdminData();
         renderAdminFAQ();
-        showAlert('FAQ Dihapus', 'FAQ berhasil dihapus.', 'success');
+        return { alert: { title: 'FAQ Dihapus', message: 'FAQ berhasil dihapus.', type: 'success' } };
     });
 }
 
 function renderAdminFAQ() {
     const tbody = document.getElementById('admin-faq-body');
     if (!tbody) return;
+    const c = document.getElementById('faq-count');
+    if (c) c.textContent = faq.length + ' FAQ';
     if (faq.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; color:#737373; padding:2rem;">Belum ada FAQ.</td></tr>';
+        tbody.innerHTML = emptyRow(3, 'Belum ada FAQ. Klik "Tambah" untuk menambah pertanyaan.');
         return;
     }
     tbody.innerHTML = faq.map(f => `
         <tr>
-            <td><strong>${f.tanya}</strong></td>
-            <td>${f.jawab}</td>
-            <td>
-                <button onclick="editFAQ(${f.id})" title="Edit FAQ" style="display:inline-flex;align-items:center;gap:0.35rem;padding:0.4rem 0.9rem;font-size:0.75rem;font-weight:600;color:#c4b5fd;background:linear-gradient(135deg,rgba(139,92,246,0.15),rgba(99,102,241,0.08));border:1px solid rgba(139,92,246,0.45);border-radius:8px;cursor:pointer;margin-right:0.5rem;transition:all 0.25s ease;box-shadow:0 0 0 0 rgba(139,92,246,0);">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
-                    Edit
-                </button>
-                <button onclick="hapusFAQ(${f.id})" title="Hapus FAQ" style="display:inline-flex;align-items:center;gap:0.35rem;padding:0.4rem 0.9rem;font-size:0.75rem;font-weight:600;color:#fca5a5;background:linear-gradient(135deg,rgba(239,68,68,0.12),rgba(220,38,38,0.06));border:1px solid rgba(239,68,68,0.35);border-radius:8px;cursor:pointer;transition:all 0.25s ease;">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
-                    Hapus
-                </button>
-            </td>
+            <td><strong>${esc(f.tanya)}</strong></td>
+            <td class="cell-desc">${esc(f.jawab)}</td>
+            <td>${rowActions('editFAQ', 'hapusFAQ', f.id)}</td>
         </tr>
     `).join('');
 }
 
-function editFAQ(id) {
-    const f = faq.find(x => x.id === id);
-    if (!f) return;
-    showModal({
-        title: 'Edit FAQ',
-        type: 'info',
-        customHTML: `
-            <div class="order-field"><label>PERTANYAAN</label><input type="text" id="ef-tanya" value="${f.tanya}"></div>
-            <div class="order-field"><label>JAWABAN</label><textarea id="ef-jawab" rows="4" style="width:100%;background:#0a0a0a;border:1px solid #1a1a1a;border-radius:8px;color:#ededed;padding:0.6rem;">${f.jawab}</textarea></div>`,
-        confirmText: 'Simpan',
-        showCancel: true,
-        cancelText: 'Batal',
-        onConfirm: () => {
-            const tanya = document.getElementById('ef-tanya').value.trim();
-            const jawab = document.getElementById('ef-jawab').value.trim();
-            if (!tanya || !jawab) { showAlert('Field Kosong', 'Isi pertanyaan dan jawaban.', 'warning'); return; }
-            f.tanya = tanya; f.jawab = jawab;
-            saveAdminData();
-            renderAdminFAQ();
-            showAlert('FAQ Diperbarui', 'FAQ berhasil disimpan.', 'success');
-        }
-    });
-}
-
 // ==================== TRANSAKSI ====================
+const STATUS_LIST = [
+    { v: 'Pending', cls: 'badge-warning' },
+    { v: 'Sukses', cls: 'badge-success' },
+    { v: 'Batal', cls: 'badge-danger' }
+];
+
 function renderAdminTransaksi() {
     const tbody = document.getElementById('admin-transaksi-body');
     if (!tbody) return;
     if (transaksi.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:#737373; padding:2rem;">Belum ada transaksi.</td></tr>';
+        tbody.innerHTML = emptyRow(8, 'Belum ada transaksi. Order dari web user akan muncul di sini.');
         return;
     }
-    tbody.innerHTML = transaksi.map(t => `
+    // Yang terbaru di atas
+    const urut = transaksi.slice().reverse();
+    tbody.innerHTML = urut.map(t => {
+        const st = STATUS_LIST.find(s => s.v === t.status) || STATUS_LIST[0];
+        return `
         <tr>
-            <td>${t.id}</td>
-            <td><strong>${t.user}</strong></td>
-            <td>${t.paket} - ${t.tier}<br><small style="opacity:0.7;">${t.method || 'QRIS'}</small></td>
-            <td>${t.durasi} ${t.satuan}</td>
-            <td>Rp ${(t.total || 0).toLocaleString('id-ID')}</td>
-            <td>${t.tanggal}</td>
+            <td class="cell-mono">${esc(t.id)}</td>
+            <td><strong>${esc(t.user)}</strong>${t.email ? `<br><small class="cell-sub">${esc(t.email)}</small>` : ''}</td>
+            <td>${esc(t.paket)} — ${esc(t.tier)}<br><small class="cell-sub">${esc(t.method || 'QRIS')}</small></td>
+            <td>${esc(t.durasi)} ${esc(t.satuan || '')}</td>
+            <td class="cell-price">Rp ${(t.total || 0).toLocaleString('id-ID')}</td>
+            <td class="cell-sub">${esc(t.tanggal)}</td>
             <td>
-                <select onchange="updateStatus('${t.id}', this.value)" style="padding:4px 8px; background:#0a0a0a; border:1px solid #1a1a1a; border-radius:6px; color:#ededed; font-size:0.75rem;">
-                    <option value="Pending" ${t.status === 'Pending' ? 'selected' : ''}>Pending</option>
-                    <option value="Sukses" ${t.status === 'Sukses' ? 'selected' : ''}>Sukses</option>
-                    <option value="Batal" ${t.status === 'Batal' ? 'selected' : ''}>Batal</option>
+                <select class="status-select" onchange="updateStatus('${encArg(t.id)}', this.value)">
+                    ${STATUS_LIST.map(s => `<option value="${s.v}" ${t.status === s.v ? 'selected' : ''}>${s.v}</option>`).join('')}
                 </select>
+                <span class="badge-status ${st.cls}">${esc(t.status || 'Pending')}</span>
             </td>
-            <td>
-                <button class="btn-outline" style="padding:0.35rem 0.6rem; font-size:0.7rem; border-color:rgba(239,68,68,0.3); color:#ef4444;" onclick="hapusTransaksi('${t.id}')">Hapus</button>
-            </td>
-        </tr>
-    `).join('');
+            <td>${rowActions('', 'hapusTransaksi', t.id)}</td>
+        </tr>`;
+    }).join('');
 }
 
 function updateStatus(id, status) {
+    id = decArg(id);
     const t = transaksi.find(x => x.id === id);
-    if (t) { t.status = status; saveAdminData(); }
+    if (!t || t.status === status) return;
+    t.status = status;
+    saveAdminData();
+    renderAdminTransaksi();
+    renderDashboard();
+    showAlert('Status Diperbarui', t.id + ' -> ' + status + '.', 'success');
 }
 
 function hapusTransaksi(id) {
-    showConfirm('Hapus Transaksi', 'Data transaksi ini akan dihapus permanen. Lanjutkan?', () => {
-        transaksi = transaksi.filter(t => t.id !== id);
+    id = decArg(id);
+    const t = transaksi.find(x => x.id === id);
+    if (!t) return;
+    showConfirm('Hapus Transaksi', 'Transaksi ' + t.id + ' atas nama "' + t.user + '" akan dihapus permanen. Lanjutkan?', () => {
+        transaksi = transaksi.filter(x => x.id !== id);
         saveAdminData();
         renderAdminTransaksi();
-        showAlert('Transaksi Dihapus', 'Data transaksi berhasil dihapus.', 'success');
+        renderDashboard();
+        return { alert: { title: 'Transaksi Dihapus', message: 'Data transaksi berhasil dihapus.', type: 'success' } };
     });
 }
 
 // ==================== DISKON ====================
-function tambahDiskon() {
-    const kode = document.getElementById('diskon-kode').value.trim().toUpperCase();
-    const persen = parseInt(document.getElementById('diskon-persen').value);
-    if (!kode || !persen || persen <= 0 || persen > 100) {
-        showAlert('Data Tidak Valid', 'Isi kode dan persen diskon (1-100).', 'warning');
-        return;
-    }
-    if (diskon.find(d => d.kode === kode)) {
-        showAlert('Kode Duplikat', 'Kode diskon ini sudah ada.', 'error');
-        return;
-    }
-    diskon.push({ kode, persen });
-    saveAdminData();
-    renderAdminDiskon();
-    document.getElementById('diskon-kode').value = '';
-    document.getElementById('diskon-persen').value = '';
-    showAlert('Diskon Ditambahkan', 'Kode ' + kode + ' sekarang aktif.', 'success');
-}
+// Satu form untuk Tambah & Edit. Kode otomatis jadi HURUF BESAR + divalidasi,
+// bukan cuma dicek pas user klik Simpan.
+function openDiskonForm(kode) {
+    const isEdit = kode !== null && kode !== undefined && kode !== '';
+    const d = isEdit ? diskon.find(x => x.kode === kode) : null;
+    if (isEdit && !d) return;
 
-function editDiskon(kode) {
-    const d = diskon.find(x => x.kode === kode);
-    if (!d) return;
     showModal({
-        title: 'Edit Diskon',
+        title: isEdit ? 'Edit Diskon' : 'Tambah Diskon',
         type: 'info',
-        customHTML: `
-            <div class="order-field"><label>KODE DISKON</label><input type="text" id="ed-kode" value="${d.kode}" style="text-transform:uppercase;"></div>
-            <div class="order-field"><label>PERSEN (%)</label><input type="number" id="ed-persen" value="${d.persen}" min="1" max="100"></div>`,
-        confirmText: 'Simpan',
+        boxClass: 'form-modal form-modal-sm',
+        showClose: true,
         showCancel: true,
         cancelText: 'Batal',
+        confirmText: isEdit ? 'Simpan Perubahan' : 'Tambah Diskon',
+        customHTML: `
+            <div class="form-error" id="form-error" hidden></div>
+            <div class="order-field">
+                <label>Kode Diskon</label>
+                <input type="text" id="fd-kode" value="${esc(d ? d.kode : '')}" placeholder="HEMAT50" maxlength="20"
+                       style="text-transform:uppercase;" oninput="this.value=this.value.toUpperCase()" autocomplete="off">
+            </div>
+            <div class="order-field">
+                <label>Potongan (%)</label>
+                <input type="number" id="fd-persen" value="${esc(d ? d.persen : 10)}" min="1" max="100" oninput="clearFormError()">
+            </div>
+            <div class="field-hint">User mengetik kode ini di form order. Potongan dihitung dari harga tier (bukan dikali jumlah).</div>`,
         onConfirm: () => {
-            const newKode = document.getElementById('ed-kode').value.trim().toUpperCase();
-            const newPersen = parseInt(document.getElementById('ed-persen').value);
-            if (!newKode || !newPersen || newPersen <= 0 || newPersen > 100) { showAlert('Data Tidak Valid', 'Isi kode dan persen (1-100).', 'warning'); return; }
-            if (newKode !== kode && diskon.find(x => x.kode === newKode)) { showAlert('Kode Duplikat', 'Kode diskon ini sudah ada.', 'error'); return; }
-            d.kode = newKode; d.persen = newPersen;
+            const newKode = val('fd-kode').toUpperCase();
+            const newPersen = parseInt(val('fd-persen'), 10);
+
+            if (!newKode) return formError('Kode diskon wajib diisi.');
+            if (!/^[A-Z0-9_-]{2,20}$/.test(newKode))
+                return formError('Kode hanya boleh huruf, angka, - atau _ (2-20 karakter).');
+            if (!newPersen || newPersen < 1 || newPersen > 100)
+                return formError('Potongan harus antara 1 sampai 100.');
+            if (diskon.some(x => x.kode === newKode && x !== d))
+                return formError('Kode "' + newKode + '" sudah dipakai diskon lain.');
+
+            if (isEdit) { d.kode = newKode; d.persen = newPersen; }
+            else diskon.push({ kode: newKode, persen: newPersen });
             saveAdminData();
             renderAdminDiskon();
-            showAlert('Diskon Diperbarui', 'Kode ' + newKode + ' berhasil disimpan.', 'success');
+            return {
+                alert: {
+                    title: isEdit ? 'Diskon Diperbarui' : 'Diskon Ditambahkan',
+                    message: 'Kode ' + newKode + ' (' + newPersen + '%) sekarang aktif di web user.',
+                    type: 'success'
+                }
+            };
         }
     });
 }
 
+function tambahDiskon() { openDiskonForm(null); }
+function editDiskon(kode) { openDiskonForm(decArg(kode)); }
+
 function hapusDiskon(kode) {
-    showConfirm('Hapus Diskon', 'Kode diskon ini akan dihapus. Lanjutkan?', () => {
-        diskon = diskon.filter(d => d.kode !== kode);
+    kode = decArg(kode);
+    const d = diskon.find(x => x.kode === kode);
+    if (!d) return;
+    showConfirm('Hapus Diskon', 'Kode ' + d.kode + ' (' + d.persen + '%) akan dihapus dan tidak bisa dipakai user lagi. Lanjutkan?', () => {
+        diskon = diskon.filter(x => x.kode !== kode);
         saveAdminData();
         renderAdminDiskon();
-        showAlert('Diskon Dihapus', 'Kode diskon berhasil dihapus.', 'success');
+        return { alert: { title: 'Diskon Dihapus', message: 'Kode ' + d.kode + ' berhasil dihapus.', type: 'success' } };
     });
 }
 
 function renderAdminDiskon() {
     const tbody = document.getElementById('admin-diskon-body');
     if (!tbody) return;
+    const c = document.getElementById('diskon-count');
+    if (c) c.textContent = diskon.length + ' kode';
     if (diskon.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; color:#737373; padding:2rem;">Belum ada kode diskon.</td></tr>';
+        tbody.innerHTML = emptyRow(3, 'Belum ada kode diskon. Klik "Tambah" untuk membuat kode promo.');
         return;
     }
-    tbody.innerHTML = diskon.map(d => `
+    tbody.innerHTML = diskon.map(d => {
+        // Contoh: Rp 120.000 -> hemat Rp 12.000
+        const termurah = paket.reduce((min, p) => {
+            const h = p.tiers.reduce((a, t) => Math.min(a, t.harga), Infinity);
+            return Math.min(min, h);
+        }, Infinity);
+        const hemat = isFinite(termurah) ? termurah * d.persen / 100 : 0;
+        return `
         <tr>
-            <td><strong>${d.kode}</strong></td>
-            <td>${d.persen}%</td>
-            <td>
-                <button onclick="editDiskon('${d.kode}')" title="Edit Diskon" style="display:inline-flex;align-items:center;gap:0.35rem;padding:0.4rem 0.9rem;font-size:0.75rem;font-weight:600;color:#c4b5fd;background:linear-gradient(135deg,rgba(139,92,246,0.15),rgba(99,102,241,0.08));border:1px solid rgba(139,92,246,0.45);border-radius:8px;cursor:pointer;margin-right:0.5rem;transition:all 0.25s ease;box-shadow:0 0 0 0 rgba(139,92,246,0);">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
-                    Edit
-                </button>
-                <button onclick="hapusDiskon('${d.kode}')" title="Hapus Diskon" style="display:inline-flex;align-items:center;gap:0.35rem;padding:0.4rem 0.9rem;font-size:0.75rem;font-weight:600;color:#fca5a5;background:linear-gradient(135deg,rgba(239,68,68,0.12),rgba(220,38,38,0.06));border:1px solid rgba(239,68,68,0.35);border-radius:8px;cursor:pointer;transition:all 0.25s ease;">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
-                    Hapus
-                </button>
-            </td>
-        </tr>
-    `).join('');
+            <td><strong class="kode-chip">${esc(d.kode)}</strong></td>
+            <td class="cell-price">${d.persen}%${hemat ? `<br><small class="cell-sub">Hemat ${formatIDR(hemat)} dari ${formatIDR(termurah)}</small>` : ''}</td>
+            <td>${rowActions('editDiskon', 'hapusDiskon', d.kode)}</td>
+        </tr>`;
+    }).join('');
 }
 
 // ==================== KONTAK ====================

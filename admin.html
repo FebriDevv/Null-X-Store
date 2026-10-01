@@ -86,20 +86,21 @@
             <div class="section-header">
                 <span class="section-label">MANAJEMEN</span>
                 <h2 class="section-title">Kelola <span class="text-gradient">Paket</span></h2>
-                <p class="section-sub">Tambah atau hapus paket beserta tier harga.</p>
+                <p class="section-sub">Tambah paket baru, edit tier harga, deskripsi, dan fitur per durasi.</p>
             </div>
-            <div class="admin-form">
-                <input type="text" id="prod-nama" placeholder="Nama Paket (contoh: EXTERNAL)">
-                <input type="text" id="prod-desc" placeholder="Deskripsi Singkat">
-                <input type="text" id="prod-tiers" placeholder="Tier: 1 Day:5000, 7 Days:35000, 30 Days:120000">
+            <div class="admin-toolbar">
+                <div class="admin-toolbar-info">
+                    <span class="admin-toolbar-count" id="produk-count">0 paket</span>
+                    <span class="admin-toolbar-sub">Harga terendah otomatis jadi angka "Mulai dari" di web user.</span>
+                </div>
                 <button class="btn-glow" onclick="tambahPaket()">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                    Tambah
+                    Tambah Paket
                 </button>
             </div>
             <div class="glass-table">
                 <table>
-                    <thead><tr><th>Nama</th><th>Deskripsi</th><th>Tier Harga</th><th>Aksi</th></tr></thead>
+                    <thead><tr><th>Nama</th><th>Deskripsi</th><th>Tier Harga</th><th class="th-act">Aksi</th></tr></thead>
                     <tbody id="admin-produk-body"></tbody>
                 </table>
             </div>
@@ -112,19 +113,21 @@
             <div class="section-header">
                 <span class="section-label">MANAJEMEN</span>
                 <h2 class="section-title">Kelola <span class="text-gradient">FAQ</span></h2>
-                <p class="section-sub">Atur pertanyaan yang sering diajukan.</p>
+                <p class="section-sub">Atur pertanyaan yang sering diajukan. Langsung live di web user.</p>
             </div>
-            <div class="admin-form">
-                <input type="text" id="faq-pertanyaan" placeholder="Pertanyaan">
-                <input type="text" id="faq-jawaban" placeholder="Jawaban">
+            <div class="admin-toolbar">
+                <div class="admin-toolbar-info">
+                    <span class="admin-toolbar-count" id="faq-count">0 FAQ</span>
+                    <span class="admin-toolbar-sub">Duplikat pertanyaan otomatis ditolak.</span>
+                </div>
                 <button class="btn-glow" onclick="tambahFAQ()">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                    Tambah
+                    Tambah FAQ
                 </button>
             </div>
             <div class="glass-table">
                 <table>
-                    <thead><tr><th>Pertanyaan</th><th>Jawaban</th><th>Aksi</th></tr></thead>
+                    <thead><tr><th>Pertanyaan</th><th>Jawaban</th><th class="th-act">Aksi</th></tr></thead>
                     <tbody id="admin-faq-body"></tbody>
                 </table>
             </div>
@@ -145,7 +148,7 @@
             </button>
             <div class="glass-table">
                 <table>
-                    <thead><tr><th>ID</th><th>User</th><th>Paket</th><th>Durasi</th><th>Total</th><th>Tanggal</th><th>Status</th><th>Aksi</th></tr></thead>
+                    <thead><tr><th>ID</th><th>User</th><th>Paket</th><th>Durasi</th><th>Total</th><th>Tanggal</th><th>Status</th><th class="th-act">Aksi</th></tr></thead>
                     <tbody id="admin-transaksi-body"></tbody>
                 </table>
             </div>
@@ -220,17 +223,19 @@
                 <h2 class="section-title">Kode <span class="text-gradient">Diskon</span></h2>
                 <p class="section-sub">Buat kode promo untuk user.</p>
             </div>
-            <div class="admin-form">
-                <input type="text" id="diskon-kode" placeholder="Kode (contoh: HEMAT50)">
-                <input type="number" id="diskon-persen" placeholder="Diskon (%)" min="1" max="100">
+            <div class="admin-toolbar">
+                <div class="admin-toolbar-info">
+                    <span class="admin-toolbar-count" id="diskon-count">0 kode</span>
+                    <span class="admin-toolbar-sub">Kode otomatis jadi huruf besar, tanpa spasi.</span>
+                </div>
                 <button class="btn-glow" onclick="tambahDiskon()">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                    Tambah
+                    Tambah Diskon
                 </button>
             </div>
             <div class="glass-table">
                 <table>
-                    <thead><tr><th>Kode</th><th>Diskon</th><th>Aksi</th></tr></thead>
+                    <thead><tr><th>Kode</th><th>Diskon</th><th class="th-act">Aksi</th></tr></thead>
                     <tbody id="admin-diskon-body"></tbody>
                 </table>
             </div>
