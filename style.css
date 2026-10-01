@@ -1341,11 +1341,13 @@ td.cell-price {
     background: linear-gradient(135deg, rgba(139, 92, 246, 0.15), rgba(99, 102, 241, 0.08));
     border: 1px solid rgba(139, 92, 246, 0.45);
 }
+/* !important biar override inline style, efek glow tetap jalan */
 .row-btn-edit:hover {
-    color: #fff;
-    border-color: var(--primary);
-    background: linear-gradient(135deg, rgba(139, 92, 246, 0.3), rgba(99, 102, 241, 0.15));
-    box-shadow: 0 0 14px rgba(139, 92, 246, 0.35);
+    color: #fff !important;
+    border-color: var(--primary) !important;
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.3), rgba(99, 102, 241, 0.15)) !important;
+    box-shadow: 0 0 14px rgba(139, 92, 246, 0.35) !important;
+    transform: translateY(-1px);
 }
 .row-btn-del {
     color: #fca5a5;
@@ -1353,10 +1355,11 @@ td.cell-price {
     border: 1px solid rgba(239, 68, 68, 0.35);
 }
 .row-btn-del:hover {
-    color: #fff;
-    border-color: var(--danger);
-    background: linear-gradient(135deg, rgba(239, 68, 68, 0.28), rgba(220, 38, 38, 0.14));
-    box-shadow: 0 0 14px rgba(239, 68, 68, 0.3);
+    color: #fff !important;
+    border-color: var(--danger) !important;
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.28), rgba(220, 38, 38, 0.14)) !important;
+    box-shadow: 0 0 14px rgba(239, 68, 68, 0.3) !important;
+    transform: translateY(-1px);
 }
 
 /* ==================== STATUS SELECT ==================== */
@@ -1671,8 +1674,9 @@ td.cell-price {
     .t-days { grid-area: days; }
     .t-price-wrap { grid-area: price; }
     .t-del { grid-area: del; }
-    .row-btn span { display: none; }
-    .row-btn { padding: 0.4rem 0.55rem; }
+    /* Teks Edit/Hapus tetap ditampilkan biar tombolnya jelas */
+    .row-btn span { display: inline; }
+    .row-btn { padding: 0.4rem 0.6rem; font-size: 0.68rem; gap: 0.25rem; }
 }
 
 @media (max-width: 480px) {

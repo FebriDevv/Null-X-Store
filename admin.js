@@ -424,15 +424,20 @@ const ICON_PLUS = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" s
 function encArg(a) { return encodeURIComponent(String(a)); }
 function decArg(s) { try { return decodeURIComponent(s); } catch (e) { return s; } }
 
-function rowActions(editFn, delFn, arg) {
+// Tombol aksi kolom "Aksi": Edit + Hapus.
+// Gaya di-inline (sesuai desain yang disetujui) + tetap pakai class .row-btn
+// supaya rules responsive di style.css tetap kepakai.
+function rowActions(editFn, delFn, arg, editTitle, delTitle) {
     const enc = encArg(arg);
+    const stEdit = 'display:inline-flex;align-items:center;gap:0.35rem;padding:0.4rem 0.9rem;font-size:0.75rem;font-weight:600;color:#c4b5fd;background:linear-gradient(135deg,rgba(139,92,246,0.15),rgba(99,102,241,0.08));border:1px solid rgba(139,92,246,0.45);border-radius:8px;cursor:pointer;margin-right:0.5rem;transition:all 0.25s ease;box-shadow:0 0 0 0 rgba(139,92,246,0);';
+    const stDel = 'display:inline-flex;align-items:center;gap:0.35rem;padding:0.4rem 0.9rem;font-size:0.75rem;font-weight:600;color:#fca5a5;background:linear-gradient(135deg,rgba(239,68,68,0.12),rgba(220,38,38,0.06));border:1px solid rgba(239,68,68,0.35);border-radius:8px;cursor:pointer;transition:all 0.25s ease;';
     const edit = editFn
-        ? `<button type="button" class="row-btn row-btn-edit" onclick="${editFn}('${enc}')" title="Edit">${ICON_EDIT}<span>Edit</span></button>`
+        ? `<button type="button" class="row-btn row-btn-edit" style="${stEdit}" onclick="${editFn}('${enc}')" title="${esc(editTitle || 'Edit')}">${ICON_EDIT}<span>Edit</span></button>`
         : '';
     return `
         <div class="row-actions">
             ${edit}
-            <button type="button" class="row-btn row-btn-del" onclick="${delFn}('${enc}')" title="Hapus">${ICON_TRASH}<span>Hapus</span></button>
+            <button type="button" class="row-btn row-btn-del" style="${stDel}" onclick="${delFn}('${enc}')" title="${esc(delTitle || 'Hapus')}">${ICON_TRASH}<span>Hapus</span></button>
         </div>`;
 }
 
@@ -628,7 +633,7 @@ function renderAdminProduk() {
                 </div>
                 ${termurah ? `<div class="tier-cell-foot">Mulai dari <b>Rp ${termurah.harga.toLocaleString('id-ID')}</b></div>` : ''}
             </td>
-            <td>${rowActions('editPaket', 'hapusPaket', p.id)}</td>
+            <td>${rowActions('editPaket', 'hapusPaket', p.id, 'Edit Paket', 'Hapus Paket')}</td>
         </tr>`;
     }).join('');
 }
@@ -711,7 +716,7 @@ function renderAdminFAQ() {
         <tr>
             <td><strong>${esc(f.tanya)}</strong></td>
             <td class="cell-desc">${esc(f.jawab)}</td>
-            <td>${rowActions('editFAQ', 'hapusFAQ', f.id)}</td>
+            <td>${rowActions('editFAQ', 'hapusFAQ', f.id, 'Edit FAQ', 'Hapus FAQ')}</td>
         </tr>
     `).join('');
 }
@@ -748,7 +753,7 @@ function renderAdminTransaksi() {
                 </select>
                 <span class="badge-status ${st.cls}">${esc(t.status || 'Pending')}</span>
             </td>
-            <td>${rowActions('', 'hapusTransaksi', t.id)}</td>
+            <td>${rowActions('', 'hapusTransaksi', t.id, '', 'Hapus Transaksi')}</td>
         </tr>`;
     }).join('');
 }
@@ -867,7 +872,7 @@ function renderAdminDiskon() {
         <tr>
             <td><strong class="kode-chip">${esc(d.kode)}</strong></td>
             <td class="cell-price">${d.persen}%${hemat ? `<br><small class="cell-sub">Hemat ${formatIDR(hemat)} dari ${formatIDR(termurah)}</small>` : ''}</td>
-            <td>${rowActions('editDiskon', 'hapusDiskon', d.kode)}</td>
+            <td>${rowActions('editDiskon', 'hapusDiskon', d.kode, 'Edit Diskon', 'Hapus Diskon')}</td>
         </tr>`;
     }).join('');
 }
