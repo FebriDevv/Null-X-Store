@@ -275,6 +275,26 @@ function showAdminPage(pageId, e) {
     if (pageId === 'kontak') renderAdminKontak();
 }
 
+// Versi file yang benar-benarDimuat browser (bukan yang dicinta di HTML).
+// Kalau stamp ini != BUILD, berarti browser masih pegang file lama.
+const BUILD = 'v5-' + new Date().toISOString().slice(0, 10);
+function stampVersion() {
+    const el = document.getElementById('ver-stamp');
+    if (!el) return;
+    el.textContent = BUILD;
+    el.title = 'File admin.js + style.css versi ' + BUILD;
+    // Log ke console biar gampang dicek dari F12
+    console.log('%c[NULL-X Admin] ' + BUILD, 'color:#8b5cf6;font-weight:bold');
+}
+
+// Paksa muat ulang tanpa cache: tambah ?t=timestamp, jadi browser
+// otomatis considers URL baru (menggantikan ?v=5).
+function forceReload() {
+    const u = new URL(window.location.href);
+    u.searchParams.set('t', Date.now());
+    window.location.replace(u.toString());
+}
+
 function logoutAdmin() {
     showConfirm('Logout Admin', 'Yakin ingin keluar dari dashboard admin?', () => {
         sessionStorage.removeItem('nx_admin');
@@ -909,6 +929,7 @@ function exportToExcel() {
 
 // ==================== INIT ====================
 document.addEventListener('DOMContentLoaded', async () => {
+    stampVersion();
     showAdminPage('dashboard');
     await loadAdminShared();
     showAdminPage('dashboard');
