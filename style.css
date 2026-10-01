@@ -419,6 +419,10 @@ button[title^="Hapus"]:active {
     border: 1px solid var(--border);
     border-radius: var(--radius-lg);
     overflow: hidden;
+    /* PENTING: di layar sempit tabel boleh di-scroll horizontal,
+       bukan dipipihkan sampai kolom Aksi terpotong/hilang. */
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
 }
 table { width: 100%; border-collapse: collapse; }
 th, td {
@@ -1272,7 +1276,19 @@ footer {
 .admin-toolbar-sub { font-size: 0.75rem; color: var(--text-muted); }
 
 /* ==================== TABLE CELLS ==================== */
-.th-act { text-align: right !important; width: 1%; white-space: nowrap; }
+/* Kolom Aksi: sticky di kanan -> tombol Edit/Hapus SELALU kelihatan
+   walau tabel lebar dan di-scroll horizontal di HP. */
+.th-act, .td-act {
+    text-align: right !important;
+    width: 1%;
+    white-space: nowrap;
+    position: sticky;
+    right: 0;
+    z-index: 2;
+    background: var(--bg-card);
+    box-shadow: -8px 0 12px -8px rgba(0, 0, 0, 0.55);
+}
+.th-act { z-index: 3; }
 td.cell-desc { color: var(--text-muted); max-width: 320px; }
 td.cell-mono {
     font-family: 'Space Grotesk', monospace;
@@ -1654,6 +1670,10 @@ td.cell-price {
 
 /* ==================== RESPONSIVE ==================== */
 @media (max-width: 900px) {
+    /* Tabel admin: beri min-width + padding kecil supaya tombol Aksi
+       tidak pernah kepotong; tabel di-scroll horizontal, kolom Aksi nempel kanan. */
+    .glass-table table { min-width: 560px; }
+    .glass-table th, .glass-table td { padding: 0.7rem 0.75rem; }
     .navbar { padding: 0.85rem 1.25rem; }
     .nav-links { display: none; }
     .hero { padding: 3rem 1.25rem 2.5rem; }

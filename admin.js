@@ -633,7 +633,7 @@ function renderAdminProduk() {
                 </div>
                 ${termurah ? `<div class="tier-cell-foot">Mulai dari <b>Rp ${termurah.harga.toLocaleString('id-ID')}</b></div>` : ''}
             </td>
-            <td>${rowActions('editPaket', 'hapusPaket', p.id, 'Edit Paket', 'Hapus Paket')}</td>
+            <td class="td-act">${rowActions('editPaket', 'hapusPaket', p.id, 'Edit Paket', 'Hapus Paket')}</td>
         </tr>`;
     }).join('');
 }
@@ -716,7 +716,7 @@ function renderAdminFAQ() {
         <tr>
             <td><strong>${esc(f.tanya)}</strong></td>
             <td class="cell-desc">${esc(f.jawab)}</td>
-            <td>${rowActions('editFAQ', 'hapusFAQ', f.id, 'Edit FAQ', 'Hapus FAQ')}</td>
+            <td class="td-act">${rowActions('editFAQ', 'hapusFAQ', f.id, 'Edit FAQ', 'Hapus FAQ')}</td>
         </tr>
     `).join('');
 }
@@ -753,7 +753,7 @@ function renderAdminTransaksi() {
                 </select>
                 <span class="badge-status ${st.cls}">${esc(t.status || 'Pending')}</span>
             </td>
-            <td>${rowActions('', 'hapusTransaksi', t.id, '', 'Hapus Transaksi')}</td>
+            <td class="td-act">${rowActions('', 'hapusTransaksi', t.id, '', 'Hapus Transaksi')}</td>
         </tr>`;
     }).join('');
 }
@@ -872,7 +872,7 @@ function renderAdminDiskon() {
         <tr>
             <td><strong class="kode-chip">${esc(d.kode)}</strong></td>
             <td class="cell-price">${d.persen}%${hemat ? `<br><small class="cell-sub">Hemat ${formatIDR(hemat)} dari ${formatIDR(termurah)}</small>` : ''}</td>
-            <td>${rowActions('editDiskon', 'hapusDiskon', d.kode, 'Edit Diskon', 'Hapus Diskon')}</td>
+            <td class="td-act">${rowActions('editDiskon', 'hapusDiskon', d.kode, 'Edit Diskon', 'Hapus Diskon')}</td>
         </tr>`;
     }).join('');
 }
